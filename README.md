@@ -1,5 +1,7 @@
 # Mnote: OneNote notes as files, with a reader
 
+**Website and download:** https://swiftkeyc.github.io/mnote-reader/
+
 Mnote exports your Microsoft OneNote notebooks into ordinary files that you own. It also gives
 you a reader app to read, search, highlight, annotate and edit them.
 
@@ -22,11 +24,9 @@ download besides these files.
 
 1. Put this repository in a folder you'll keep, for example `Documents\Mnote`. Either use
    **Code > Download ZIP** and unzip it, or run `git clone`.
-2. Export your notebooks from OneNote (see [Export from OneNote](#export-from-onenote)):
-
-   ```
-   powershell -ExecutionPolicy Bypass -File .\mnote.ps1 export -OutDir "$HOME\Documents\OneNote Export"
-   ```
+2. Export your notebooks. Open the OneNote desktop app with your notebooks open, then
+   double-click **`Export OneNote.cmd`**. It writes everything to `Documents\OneNote Export`.
+   For more options, see [Export from OneNote](#export-from-onenote).
 
 3. Install the reader for your Windows account by double-clicking **`Install Mnote Reader.cmd`**.
    This makes `.mnote` and `.mnotebook` files open in it, and adds it to the Start menu. To
@@ -175,6 +175,8 @@ OneNote Export\<Notebook>\<Section group>\<Section>\01 <Page title>.mnote
 OneNote Export\library.json        notebook and section order, used by the reader
 ```
 
+- Without `-OutDir`, the export goes to `Documents\OneNote Export`. `Export OneNote.cmd` does
+  the same with a double-click.
 - The number in front of each file name keeps the page order from OneNote.
 - Each file also keeps the page's last-modified date.
 - Running the export again refreshes the pages but keeps your highlights and notes. Pages you

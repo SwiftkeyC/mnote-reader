@@ -55,8 +55,9 @@ param(
     # Only these notebooks (by the name shown in OneNote). Default: all open notebooks.
     [string[]]$Notebook,
 
-    # Where 'export' writes. Keep it short: Windows limits full paths to 260 characters.
-    [string]$OutDir = 'OneNote Export',
+    # Where 'export' writes (and what 'read' opens when given nothing).
+    # Default: Documents\OneNote Export. Keep it short: Windows limits full paths to 260 characters.
+    [string]$OutDir,
 
     # Also export pages from OneNote's Notebook Recycle Bin.
     [switch]$IncludeRecycleBin,
@@ -72,6 +73,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+
+# The export folder: -OutDir (relative to the current folder), else Documents\OneNote Export.
+function Get-LibraryDir {
+    if ($OutDir) { return [IO.Path]::GetFullPath([IO.Path]::Combine((Get-Location).ProviderPath, $OutDir)) }
+    [IO.Path]::Combine([Environment]::GetFolderPath('MyDocuments'), 'OneNote Export')
+}
 
 $MimeType = 'application/vnd.mnote+zip'
 $NotebookMimeType = 'application/vnd.mnotebook+zip'
@@ -684,7 +691,7 @@ function Invoke-Export {
         return
     }
 
-    $outRoot = [IO.Path]::GetFullPath([IO.Path]::Combine((Get-Location).ProviderPath, $OutDir))
+    $outRoot = Get-LibraryDir
     $appVersion = ''
     try { $appVersion = (Get-Process ONENOTE -ErrorAction Stop | Select-Object -First 1).FileVersion } catch { }
 
@@ -1021,7 +1028,7 @@ function Write-PageEdit($ref, [string]$title, [string]$bodyHtml, [string]$text) 
 # What 'read' should show: a .mnotebook file on its own, or the folder holding the notebooks
 # (found from a .mnote file inside it, or given directly).
 function Resolve-Library([string]$p) {
-    if (-not $p) { $p = [IO.Path]::Combine((Get-Location).ProviderPath, $OutDir) }
+    if (-not $p) { $p = Get-LibraryDir }
     $full = (Resolve-Path -LiteralPath $p).ProviderPath.TrimEnd('\')
     if (-not [IO.File]::Exists($full)) { return @{ Root = $full; Only = $null; Open = $null; Key = $full } }
     if ($full -like '*.mnotebook') {
@@ -1498,7 +1505,7 @@ function Get-ShortcutPath { Join-Path ([Environment]::GetFolderPath('Programs'))
 function Invoke-Install {
     $script = Join-Path $PSScriptRoot 'mnote.ps1'
     if (-not [IO.File]::Exists((Join-Path $PSScriptRoot 'mnote-reader.html'))) { throw "mnote-reader.html must be next to mnote.ps1 in $PSScriptRoot" }
-    $library = if ($Path) { (Resolve-Path -LiteralPath $Path).ProviderPath.TrimEnd('\') } else { [IO.Path]::Combine([Environment]::GetFolderPath('MyDocuments'), 'OneNote Export') }
+    $library = if ($Path) { (Resolve-Path -LiteralPath $Path).ProviderPath.TrimEnd('\') } else { Get-LibraryDir }
     $ps = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 
     $cfg = Get-ReaderConfig
