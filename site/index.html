@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mnote Reader: your OneNote notes as files you own</title>
+<meta name="description" content="Export Microsoft OneNote notebooks to files you own, and read them like a PDF: search, highlights, notes, bookmarks and editing. Free and open source for Windows.">
+<meta property="og:title" content="Mnote Reader: your OneNote notes as files you own">
+<meta property="og:description" content="Export OneNote to .mnote files and read them like a PDF, with search, highlights, notes and editing. Free, open source, runs on your PC.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://swiftkeyc.github.io/mnote-reader/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+:root {
+  color-scheme: light;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --serif: "Sitka Text", Charter, Cambria, Georgia, serif;
+  --bg: #faf9fc;
+  --bg-2: #f2f0f7;
+  --surface: #ffffff;
+  --text: #1d1b24;
+  --text-2: #57536a;
+  --text-3: #8a869a;
+  --line: #e5e2ed;
+  --accent: #6d3fc0;
+  --accent-2: #8b5cf6;
+  --accent-soft: #efe9fb;
+  --accent-text: #5a2fa6;
+  --on-accent: #ffffff;
+  --shadow: 0 1px 2px rgba(30, 20, 60, .05), 0 12px 32px rgba(30, 20, 60, .08);
+  --shadow-lg: 0 2px 6px rgba(30, 20, 60, .06), 0 30px 80px rgba(40, 20, 90, .18);
+  --hl: #fde68a;
+  --radius: 14px;
+  /* the mock reader window */
+  --w-chrome: #fbfbfc; --w-canvas: #e9e8ee; --w-line: #e3e1ea; --w-text-2: #6a6676; --w-paper: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0f0e13; --bg-2: #16151c; --surface: #1b1a22; --text: #eceaf2; --text-2: #aaa6b8; --text-3: #7b778a;
+    --line: #2b2935; --accent: #a78bfa; --accent-2: #c4b5fd; --accent-soft: #2a2140; --accent-text: #c9b8fe; --on-accent: #17141f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 32px rgba(0, 0, 0, .35);
+    --shadow-lg: 0 2px 6px rgba(0, 0, 0, .4), 0 30px 80px rgba(0, 0, 0, .55);
+    --hl: rgba(250, 204, 21, .32);
+    --w-chrome: #1b1a21; --w-canvas: #121117; --w-line: #2d2b36; --w-text-2: #a29eb1; --w-paper: #1e1d25;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--font); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent-text); }
+img, svg { display: block; }
+.wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* nav */
+.nav { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.nav .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 18px/1 var(--display); color: var(--text); text-decoration: none; letter-spacing: -.01em; }
+.brand img { width: 26px; height: 26px; }
+.nav-links { display: flex; gap: 22px; margin-left: auto; }
+.nav-links a { color: var(--text-2); text-decoration: none; font-size: 15px; }
+.nav-links a:hover { color: var(--text); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 46px; padding: 0 20px; border-radius: 11px; font: 600 15.5px/1 var(--font); text-decoration: none; border: 1px solid transparent; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, background .12s ease; white-space: nowrap; }
+.btn:hover { transform: translateY(-1px); }
+.btn-primary { background: var(--accent); color: var(--on-accent); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.btn-primary:hover { box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 42%, transparent); }
+.btn-ghost { background: var(--surface); color: var(--text); border-color: var(--line); }
+.btn-ghost:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.btn-sm { height: 38px; padding: 0 14px; font-size: 14px; border-radius: 9px; }
+
+/* hero */
+.hero { padding: 76px 0 40px; text-align: center; position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; inset: -40% -10% auto; height: 640px; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 22%, transparent), transparent); opacity: .7; pointer-events: none; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); font-size: 13.5px; font-weight: 600; position: relative; }
+.eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+h1 { position: relative; font: 750 clamp(38px, 6vw, 64px)/1.04 var(--display); letter-spacing: -.035em; margin: 20px auto 18px; max-width: 13ch; }
+h1 em { font-style: normal; background: linear-gradient(100deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lead { position: relative; font-size: clamp(17px, 2vw, 20px); color: var(--text-2); max-width: 640px; margin: 0 auto 30px; }
+.cta { position: relative; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.meta { position: relative; margin-top: 16px; color: var(--text-3); font-size: 13.5px; display: flex; gap: 8px 16px; justify-content: center; flex-wrap: wrap; }
+.meta span { display: inline-flex; align-items: center; gap: 6px; }
+.meta svg.i { width: 15px; height: 15px; }
+
+/* mock reader window */
+.shot { position: relative; margin: 54px auto 0; max-width: 1060px; }
+.window { border-radius: 14px; overflow: hidden; background: var(--w-canvas); border: 1px solid var(--w-line); box-shadow: var(--shadow-lg); text-align: left; font-size: 13px; line-height: 1.45; }
+.w-title { display: flex; align-items: center; height: 34px; padding-left: 14px; background: var(--w-chrome); border-bottom: 1px solid var(--w-line); color: var(--w-text-2); font-size: 12px; }
+.w-title b { font-weight: 500; color: var(--text); margin-left: 8px; }
+.w-title img { width: 14px; height: 14px; }
+.w-ctrl { margin-left: auto; display: flex; }
+.w-ctrl span { width: 44px; height: 34px; display: grid; place-items: center; }
+.w-ctrl svg { width: 11px; height: 11px; stroke: var(--w-text-2); stroke-width: 1.4; fill: none; }
+.w-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 44px; padding: 0 10px; background: var(--w-chrome); border-bottom: 1px solid var(--w-line); color: var(--w-text-2); }
+.w-bar .l, .w-bar .r { display: flex; align-items: center; gap: 4px; }
+.w-bar .r { justify-content: flex-end; }
+.w-ib { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 7px; }
+.w-ib.on { background: var(--accent-soft); color: var(--accent-text); }
+.w-ib svg.i { width: 17px; height: 17px; }
+.w-doc { display: flex; flex-direction: column; line-height: 1.2; margin-left: 4px; }
+.w-doc b { color: var(--text); font-weight: 600; font-size: 13px; }
+.w-doc small { font-size: 11.5px; }
+.w-page { display: flex; align-items: center; gap: 8px; }
+.w-page span.box { min-width: 36px; height: 26px; border: 1px solid var(--w-line); border-radius: 6px; display: grid; place-items: center; background: var(--w-paper); color: var(--text); }
+.w-body { display: grid; grid-template-columns: 236px 1fr 270px; min-height: 470px; }
+.w-side { background: var(--w-chrome); border-right: 1px solid var(--w-line); padding: 8px; }
+.w-tabs { display: flex; gap: 14px; padding: 4px 6px 9px; border-bottom: 1px solid var(--w-line); margin: 0 -8px 8px; padding-left: 14px; color: var(--w-text-2); font-weight: 500; }
+.w-tabs span.on { color: var(--accent-text); box-shadow: 0 2px 0 var(--accent); padding-bottom: 7px; margin-bottom: -9px; }
+.t-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; color: var(--text); white-space: nowrap; overflow: hidden; }
+.t-row.nb { font-weight: 600; }
+.t-row .n { margin-left: auto; color: var(--text-3); font-size: 11px; }
+.t-row i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.t-row.sec { padding-left: 20px; font-weight: 500; }
+.t-row.pg { padding-left: 44px; color: var(--w-text-2); }
+.t-row.pg.on { background: var(--accent-soft); color: var(--accent-text); font-weight: 500; }
+.w-main { position: relative; padding: 22px 26px 0; overflow: hidden; }
+.chap { display: flex; align-items: center; gap: 8px; color: var(--w-text-2); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 0 auto 10px; max-width: 520px; }
+.chap::after { content: ""; flex: 1; height: 1px; background: var(--w-line); }
+.chap i { width: 8px; height: 8px; border-radius: 2px; background: #d9534f; }
+.sheet { position: relative; max-width: 520px; margin: 0 auto; background: var(--w-paper); border-radius: 3px; box-shadow: 0 1px 2px rgba(25, 20, 45, .06), 0 10px 28px rgba(25, 20, 45, .08); padding: 28px 34px 34px; font-family: var(--serif); font-size: 14.5px; line-height: 1.65; color: var(--text); }
+.sheet .k { font: 700 10px/1 var(--font); letter-spacing: .07em; text-transform: uppercase; color: var(--w-text-2); display: flex; gap: 6px; align-items: center; }
+.sheet .k i { width: 7px; height: 7px; border-radius: 2px; background: #d9534f; }
+.sheet h3 { font: 650 22px/1.2 var(--serif); margin: 8px 0 4px; letter-spacing: -.01em; }
+.sheet .d { font: 11px var(--font); color: var(--w-text-2); padding-bottom: 12px; border-bottom: 1px solid var(--w-line); margin-bottom: 14px; }
+.sheet p { margin: 0 0 10px; }
+.sheet ul { margin: 0 0 10px; padding-left: 20px; }
+.sheet mark { background: var(--hl); color: inherit; border-radius: 2px; padding: 1px 0; }
+.sheet mark.g { background: color-mix(in srgb, #4ade80 40%, transparent); }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); vertical-align: 6px; margin-left: 2px; }
+.ribbon { position: absolute; top: 0; right: 22px; width: 12px; height: 20px; background: var(--accent); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 74%, 0 100%); }
+.w-notes { background: var(--w-chrome); border-left: 1px solid var(--w-line); padding: 12px; }
+.w-notes h4 { margin: 2px 4px 12px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
+.w-notes h4 span { font-weight: 500; color: var(--w-text-2); font-size: 11.5px; background: var(--w-canvas); border-radius: 6px; padding: 3px 8px; }
+.card { background: var(--w-paper); border: 1px solid var(--w-line); border-radius: 10px; padding: 10px 11px; margin-bottom: 9px; }
+.card q { display: block; quotes: none; border-left: 3px solid #facc15; padding-left: 9px; font-family: var(--serif); color: var(--text); }
+.card q.g { border-color: #4ade80; }
+.card .nt { margin-top: 7px; padding: 6px 8px; border-radius: 6px; background: var(--w-canvas); color: var(--text); font-size: 12px; }
+.card small { display: block; margin-top: 5px; color: var(--text-3); font-size: 10.5px; }
+.anchor { position: relative; }
+.pop { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -8px); white-space: nowrap; line-height: 1.2; z-index: 2; display: flex; align-items: center; gap: 5px; padding: 5px; background: var(--w-chrome); border: 1px solid var(--w-line); border-radius: 10px; box-shadow: var(--shadow); font: 12.5px var(--font); color: var(--text); }
+.pop i { width: 18px; height: 18px; border-radius: 50%; }
+.pop .sep { width: 1px; height: 16px; padding: 0; background: var(--w-line); margin: 0 3px; }
+.pop span { padding: 0 6px; }
+
+/* sections */
+section { padding: 88px 0; }
+.sec-head { text-align: center; max-width: 680px; margin: 0 auto 46px; }
+.sec-head .tag { color: var(--accent-text); font-weight: 700; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+h2 { font: 720 clamp(28px, 3.6vw, 40px)/1.12 var(--display); letter-spacing: -.025em; margin: 10px 0 12px; }
+.sec-head p { color: var(--text-2); font-size: 17.5px; margin: 0; }
+.alt { background: var(--bg-2); border-block: 1px solid var(--line); }
+
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.feat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; box-shadow: 0 1px 2px rgba(30, 20, 60, .03); }
+.feat .ic { width: 42px; height: 42px; border-radius: 11px; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; margin-bottom: 16px; }
+.feat h3 { font: 650 17.5px/1.3 var(--display); margin: 0 0 6px; }
+.feat p { margin: 0; color: var(--text-2); font-size: 15px; }
+
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; counter-reset: step; }
+.step { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px 24px 24px; }
+.step::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font: 700 15px/1 var(--font); margin-bottom: 16px; }
+.step h3 { font: 650 18px/1.3 var(--display); margin: 0 0 6px; }
+.step p { margin: 0 0 14px; color: var(--text-2); font-size: 15px; }
+.file { display: inline-flex; align-items: center; gap: 8px; padding: 7px 11px; border-radius: 8px; background: var(--bg-2); border: 1px solid var(--line); font: 600 13.5px/1 var(--font); color: var(--text); }
+.file img { width: 16px; height: 16px; }
+.file svg.i { width: 16px; height: 16px; color: var(--text-2); }
+.after { margin-top: 22px; text-align: center; color: var(--text-2); }
+
+.note { display: flex; gap: 16px; align-items: flex-start; max-width: 860px; margin: 34px auto 0; padding: 18px 20px; border-radius: var(--radius); background: color-mix(in srgb, #f59e0b 12%, var(--surface)); border: 1px solid color-mix(in srgb, #f59e0b 35%, var(--line)); }
+.note svg.i { color: #d97706; margin-top: 2px; }
+.note .note-title { display: block; margin-bottom: 2px; }
+.note p { margin: 0; color: var(--text-2); font-size: 15px; }
+
+.formats { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.fmt { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+.fmt-h { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.fmt-h img { width: 36px; height: 36px; }
+.fmt-h h3 { margin: 0; font: 650 19px/1.2 var(--display); }
+.fmt-h code { font: 12.5px/1 ui-monospace, Consolas, monospace; color: var(--text-3); }
+.fmt p { margin: 0 0 12px; color: var(--text-2); font-size: 15px; }
+.fmt ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.fmt li { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--text-2); }
+.fmt li code { flex: none; width: 140px; font: 13px ui-monospace, Consolas, monospace; color: var(--text); }
+
+.two { display: grid; grid-template-columns: 1fr 1.4fr; gap: 40px; align-items: start; }
+.req { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+.req h3 { margin: 0 0 12px; font: 650 18px/1.3 var(--display); }
+.req ul { margin: 0; padding: 0; list-style: none; }
+.req li { display: flex; gap: 10px; padding: 7px 0; color: var(--text-2); font-size: 15px; }
+.req li svg.i { color: var(--accent); width: 18px; height: 18px; margin-top: 3px; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0 20px; margin-bottom: 10px; }
+summary { cursor: pointer; list-style: none; padding: 16px 0; font-weight: 600; display: flex; justify-content: space-between; gap: 16px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; color: var(--text-3); font-weight: 400; font-size: 20px; line-height: 1; }
+details[open] summary::after { content: "\2212"; }
+details p { margin: -4px 0 16px; color: var(--text-2); font-size: 15px; }
+code.k { font: 13.5px ui-monospace, Consolas, monospace; background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+
+.final { text-align: center; padding: 90px 0 96px; }
+.final .box { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent-2) 80%, #3b82f6)); color: #fff; border-radius: 22px; padding: 56px 24px; box-shadow: var(--shadow-lg); }
+.final h2 { color: #fff; margin-top: 0; }
+.final p { color: rgba(255, 255, 255, .86); margin: 0 auto 26px; max-width: 520px; font-size: 17px; }
+.final .btn-primary { background: #fff; color: #4c1d95; box-shadow: none; }
+.final .btn-ghost { background: transparent; color: #fff; border-color: rgba(255, 255, 255, .45); }
+footer { border-top: 1px solid var(--line); padding: 30px 0 40px; color: var(--text-3); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
+footer a { color: var(--text-2); }
+
+@media (max-width: 980px) {
+  .w-body { grid-template-columns: 210px 1fr; }
+  .w-notes { display: none; }
+  .grid, .steps { grid-template-columns: 1fr 1fr; }
+  .two { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  .nav-links { display: none; }
+  .nav .btn { margin-left: auto; }
+  .hero { padding-top: 52px; }
+  .w-body { grid-template-columns: 1fr; min-height: 380px; }
+  .w-side, .w-bar .r .w-ib:not(.on), .w-page, .pop { display: none; }
+  .w-bar { grid-template-columns: 1fr auto; }
+  .w-main { padding: 16px 12px 0; }
+  .sheet { padding: 22px 20px 26px; }
+  .grid, .steps, .formats { grid-template-columns: 1fr; }
+  .fmt li code { width: 112px; }
+  section { padding: 64px 0; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn { transition: none; } .btn:hover { transform: none; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-gh" viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></symbol>
+  <symbol id="i-win" viewBox="0 0 24 24"><path d="M3 5.5l7.5-1v7H3zM12.5 4.2L21 3v8.5h-8.5zM3 12.5h7.5v7L3 18.5zM12.5 12.5H21V21l-8.5-1.2z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 4v16M5 20h14M7 8l-3 6a3 3 0 0 0 6 0zM17 8l-3 6a3 3 0 0 0 6 0zM7 8h10"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M9 7h6"/></symbol>
+  <symbol id="i-marker" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L11 18H6v-5z"/><path d="M12 7l5 5"/><path d="M4 21h8"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+  <symbol id="i-files" viewBox="0 0 24 24"><path d="M8 3h7l4 4v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M3 7v12a2 2 0 0 0 2 2h9"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-zip" viewBox="0 0 24 24"><path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M11 3v2h2v2h-2v2h2v2h-2v3"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
+  <symbol id="i-notes" viewBox="0 0 24 24"><path d="M5 4h14a1 1 0 0 1 1 1v10.5L15.5 20H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 20v-4.5a.5.5 0 0 1 .5-.5H20M8 9h8M8 13h5"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M3 18l5-12 5 12M4.7 14h6.6M15 10.5a3 3 0 0 1 6 0V18M21 14.5c-4 0-6 .8-6 2.2 0 1 .8 1.6 2 1.6 2 0 4-1.3 4-3.8"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7" rx="1"/></symbol>
+  <symbol id="i-cmd" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></symbol>
+</svg>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="favicon.svg" alt="">Mnote Reader</a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#formats">File formats</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-ghost btn-sm" href="https://github.com/SwiftkeyC/mnote-reader"><svg class="i"><use href="#i-gh"/></svg>GitHub</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" style="padding-bottom:0">
+    <div class="wrap">
+      <span class="eyebrow"><i></i>Free and open source for Windows</span>
+      <h1>Your OneNote notes, as <em>files you own</em></h1>
+      <p class="lead">Mnote exports your OneNote notebooks to ordinary files on your PC, and reads them like a PDF. You can search, highlight, add notes and edit, and everything is saved inside the files.</p>
+      <div class="cta">
+        <a class="btn btn-primary" id="dl" href="https://github.com/SwiftkeyC/mnote-reader/archive/refs/heads/main.zip"><svg class="i"><use href="#i-dl"/></svg>Download for Windows</a>
+        <a class="btn btn-ghost" href="https://github.com/SwiftkeyC/mnote-reader"><svg class="i"><use href="#i-gh"/></svg>View the code</a>
+      </div>
+      <div class="meta">
+        <span><svg class="i"><use href="#i-win"/></svg>Windows 10 and 11</span>
+        <span><svg class="i"><use href="#i-zip"/></svg>Small ZIP, nothing to install from a store</span>
+        <span><svg class="i"><use href="#i-scale"/></svg>MIT license</span>
+        <span id="updated" hidden></span>
+      </div>
+
+      <div class="shot" aria-label="Preview of the Mnote Reader window" role="img">
+        <div class="window">
+          <div class="w-title"><img src="favicon.svg" alt=""><b>What is cloud computing? – Study notebook</b>
+            <div class="w-ctrl"><span><svg viewBox="0 0 10 10"><path d="M1 5h8"/></svg></span><span><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7"/></svg></span><span><svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg></span></div>
+          </div>
+          <div class="w-bar">
+            <div class="l"><span class="w-ib on"><svg class="i"><use href="#i-sidebar"/></svg></span><div class="w-doc"><b>Study notebook</b><small>Cloud basics · What is cloud computing?</small></div></div>
+            <div class="w-page"><span class="w-ib"><svg class="i"><use href="#i-left"/></svg></span><span class="box">5</span><span>of 24</span><span class="w-ib"><svg class="i"><use href="#i-right"/></svg></span><span style="margin:0 6px;opacity:.5">|</span><span>100%</span></div>
+            <div class="r"><span class="w-ib"><svg class="i"><use href="#i-marker"/></svg></span><span class="w-ib"><svg class="i"><use href="#i-type"/></svg></span><span class="w-ib"><svg class="i"><use href="#i-print"/></svg></span><span class="w-ib on"><svg class="i"><use href="#i-notes"/></svg></span></div>
+          </div>
+          <div class="w-body">
+            <div class="w-side">
+              <div class="w-tabs"><span class="on">Contents</span><span>Bookmarks</span><span>Search</span></div>
+              <div class="t-row nb"><svg class="i" style="width:15px;height:15px;color:var(--accent)"><use href="#i-book"/></svg>Study notebook<span class="n">24</span></div>
+              <div class="t-row sec"><i style="background:#7c5cd6"></i>Getting started<span class="n">4</span></div>
+              <div class="t-row sec"><i style="background:#d9534f"></i>Cloud basics<span class="n">6</span></div>
+              <div class="t-row pg on">What is cloud computing?</div>
+              <div class="t-row pg">Cloud benefits</div>
+              <div class="t-row pg">Pricing models</div>
+              <div class="t-row sec"><i style="background:#2f9e6e"></i>Security<span class="n">5</span></div>
+              <div class="t-row sec"><i style="background:#e0912f"></i>Networking<span class="n">5</span></div>
+              <div class="t-row sec"><i style="background:#3b82c4"></i>Revision<span class="n">4</span></div>
+            </div>
+            <div class="w-main">
+              <div class="chap"><i></i>Cloud basics</div>
+              <div class="sheet">
+                <span class="ribbon"></span>
+                <div class="k"><i></i>Cloud basics <span style="font-weight:500;letter-spacing:.02em;text-transform:none">· 1 of 6</span></div>
+                <h3>What is cloud computing?</h3>
+                <div class="d">Created 5 Oct 2026 · Edited in Mnote 17 Oct 2026</div>
+                <p>Cloud computing is the <mark>on-demand delivery of IT resources over the internet</mark><span class="dot"></span> with pay-as-you-go pricing.</p>
+                <ul>
+                  <li>No up-front hardware to buy</li>
+                  <li><b>Scale</b> up or down in minutes</li>
+                  <li>Go global in a few clicks</li>
+                </ul>
+                <p>Three models: <span class="anchor"><mark class="g">IaaS, PaaS and SaaS</mark><span class="pop" aria-hidden="true"><i style="background:#facc15"></i><i style="background:#4ade80"></i><i style="background:#60a5fa"></i><i style="background:#f472b6"></i><span class="sep"></span><span>Note</span><span>Copy</span></span></span>. Each one hands more of the stack to the provider.</p>
+              </div>
+            </div>
+            <div class="w-notes">
+              <h4>Notes <span>This page</span></h4>
+              <div class="card"><q>on-demand delivery of IT resources over the internet</q><div class="nt">Key definition, likely on the exam.</div><small>17 Oct</small></div>
+              <div class="card"><q class="g">IaaS, PaaS and SaaS</q><div class="nt">EC2 = IaaS, Beanstalk = PaaS</div><small>17 Oct</small></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="tag">Features</span>
+        <h2>Read OneNote like a book, keep it like a file</h2>
+        <p>Everything you'd expect from a good PDF reader, made for notes, without any cloud account.</p>
+      </div>
+      <div class="grid">
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-book"/></svg></div><h3>Reads like a PDF</h3><p>Each notebook is one document, with sections as chapters and pages as sheets. Page numbers, zoom, a contents sidebar, and light, sepia or dark themes.</p></div>
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-marker"/></svg></div><h3>Highlights and notes</h3><p>Highlight in four colours, comment on any passage, bookmark pages and add page notes. They're saved inside the file, so they travel with it.</p></div>
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-search"/></svg></div><h3>Search everything</h3><p>Search the text, titles and your own notes across every notebook at once, and jump straight to each match.</p></div>
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-edit"/></svg></div><h3>Edit your pages</h3><p>Fix a word or rewrite a section, with bold, lists, headings and checkboxes. OneNote's original copy of each page is always kept.</p></div>
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-files"/></svg></div><h3>One file per notebook</h3><p>Pack a whole notebook into a single <code class="k">.mnotebook</code> file to share, back up or archive. You can unpack it again any time.</p></div>
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-lock"/></svg></div><h3>Private by design</h3><p>No account, no upload, no tracking. The reader runs entirely on your PC, and your notes never leave it.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="alt">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="tag">How it works</span>
+        <h2>Three double-clicks to your notes</h2>
+        <p>No installer wizard and no admin rights. A few small files do everything.</p>
+      </div>
+      <div class="steps">
+        <div class="step"><h3>Download and unzip</h3><p>Unzip the download into a folder you'll keep, for example <code class="k">Documents\Mnote</code>.</p><span class="file"><svg class="i"><use href="#i-zip"/></svg>mnote-reader-main.zip</span></div>
+        <div class="step"><h3>Export from OneNote</h3><p>Open the OneNote desktop app with your notebooks open, then double-click this file. Your notes go to <code class="k">Documents\OneNote Export</code>.</p><span class="file"><svg class="i"><use href="#i-cmd"/></svg>Export OneNote.cmd</span></div>
+        <div class="step"><h3>Install the reader</h3><p>Double-click to make <code class="k">.mnote</code> and <code class="k">.mnotebook</code> files open in Mnote Reader, and to add it to the Start menu.</p><span class="file"><svg class="i"><use href="#i-cmd"/></svg>Install Mnote Reader.cmd</span></div>
+      </div>
+      <p class="after">Then open <b>Mnote Reader</b> from the Start menu, or double-click any exported page or notebook.</p>
+      <div class="note">
+        <svg class="i"><use href="#i-warn"/></svg>
+        <div><b class="note-title">Windows may warn you about files from the internet</b><p>Before unzipping, right-click the ZIP, choose <b>Properties</b>, tick <b>Unblock</b> and click OK. If you see "Windows protected your PC" anyway, choose <b>More info &gt; Run anyway</b>. The files are plain scripts you can read on GitHub.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="formats">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="tag">Open file formats</span>
+        <h2>Your notes in formats you can open anywhere</h2>
+        <p>Both are ordinary ZIP archives. Rename one to <code class="k">.zip</code> and everything inside is readable, even without Mnote.</p>
+      </div>
+      <div class="formats">
+        <div class="fmt">
+          <div class="fmt-h"><img src="favicon.svg" alt=""><div><h3>.mnote</h3><code>One OneNote page</code></div></div>
+          <p>The page in several forms, so nothing is ever lost:</p>
+          <ul>
+            <li><code>page.html</code>The page, readable in any browser</li>
+            <li><code>page.txt</code>Plain text, for search</li>
+            <li><code>page.onexml</code>OneNote's original XML</li>
+            <li><code>images/</code>The page's pictures</li>
+            <li><code>annotations.json</code>Your highlights, notes and bookmark</li>
+          </ul>
+        </div>
+        <div class="fmt">
+          <div class="fmt-h"><svg viewBox="0 0 32 32" width="36" height="36" aria-hidden="true"><rect x="9" y="2" width="18" height="24" rx="4" fill="#baa0eb"/><rect x="4" y="6" width="18" height="24" rx="4" fill="#6d3fc0"/><path d="M8.5 13.5h10M8.5 18.5h10M8.5 23.5h6" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg><div><h3>.mnotebook</h3><code>A whole notebook</code></div></div>
+          <p>Every page of a notebook in one file, in its OneNote order:</p>
+          <ul>
+            <li><code>notebook.json</code>Name, sections and page order</li>
+            <li><code>pages/…/*.mnote</code>Each page, as its complete .mnote</li>
+          </ul>
+          <p style="margin-top:14px">Highlights, notes and edits are saved straight into the notebook file. Before packing replaces anything, every page is checked byte for byte.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" class="alt">
+    <div class="wrap two">
+      <div class="req">
+        <h3>Requirements</h3>
+        <ul>
+          <li><svg class="i"><use href="#i-check"/></svg>Windows 10 or 11, with Windows PowerShell (it comes with Windows)</li>
+          <li><svg class="i"><use href="#i-check"/></svg>The OneNote desktop app (Microsoft 365 or OneNote 2016), only for exporting</li>
+          <li><svg class="i"><use href="#i-check"/></svg>Firefox or Microsoft Edge for the reader window</li>
+        </ul>
+      </div>
+      <div>
+        <details><summary>Does Mnote upload my notes anywhere?</summary><p>No. The reader runs a small private server on your own PC (<code class="k">localhost</code>) that only its window can use. There's no account, no sync and no tracking.</p></details>
+        <details><summary>Can I still use OneNote?</summary><p>Yes. Exporting only reads from OneNote and never changes your notebooks. Export again whenever you want a fresh copy. Your highlights, notes and edited pages are kept.</p></details>
+        <details><summary>What about notebooks on OneDrive or a work or school account?</summary><p>Sign in to the OneNote desktop app with that account and open the notebooks there. Mnote exports whatever OneNote has open, including images, which it asks OneNote to download.</p></details>
+        <details><summary>Does it work on Mac or Linux?</summary><p>Not yet. Exporting uses OneNote for Windows, and the reader is set up for Windows. Exported files are standard ZIP archives, though, so they open anywhere.</p></details>
+        <details><summary>How do I remove it?</summary><p>Double-click <code class="k">Uninstall Mnote Reader.cmd</code>, then delete the folder. Your exported notes aren't touched.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="final">
+    <div class="wrap">
+      <div class="box">
+        <h2>Take your notes with you</h2>
+        <p>Free and open source under the MIT license. Read the code, suggest changes, or make it your own.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/SwiftkeyC/mnote-reader/archive/refs/heads/main.zip"><svg class="i"><use href="#i-dl"/></svg>Download for Windows</a>
+          <a class="btn btn-ghost" href="https://github.com/SwiftkeyC/mnote-reader"><svg class="i"><use href="#i-gh"/></svg>GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Mnote Reader · MIT license · <a href="https://github.com/SwiftkeyC/mnote-reader">github.com/SwiftkeyC/mnote-reader</a></span>
+    <span>Not affiliated with Microsoft. OneNote is a trademark of Microsoft Corporation.</span>
+  </div>
+</footer>
+
+<script>
+// Shows when the code was last updated (GitHub's public API; the page works without it).
+fetch('https://api.github.com/repos/SwiftkeyC/mnote-reader/commits/main')
+  .then(r => r.ok ? r.json() : null)
+  .then(c => {
+    const d = c && new Date(c.commit.committer.date);
+    if (!d || isNaN(d)) return;
+    const el = document.getElementById('updated');
+    el.textContent = 'Updated ' + d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    el.hidden = false;
+  })
+  .catch(() => {});
+</script>
+</body>
+</html>
