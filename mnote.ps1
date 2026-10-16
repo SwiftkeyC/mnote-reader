@@ -48,7 +48,8 @@ param(
     [switch]$NoBrowser,
 
     # 'read' only: serve on exactly this port, as a separate instance (for a dev preview).
-    # It never takes over an already running reader and is not used for double-clicked files.
+    # It never takes over an already running reader, is not used for double-clicked files, and
+    # does not stop by itself when no window is open.
     [int]$Port = 0,
 
     # Only these notebooks (by the name shown in OneNote). Default: all open notebooks.
@@ -1389,7 +1390,8 @@ function Invoke-Read {
     $url = "http://localhost:$boundPort/?t=$token$hash"
     Write-Host "Mnote Reader is running for: $($lib.Key)"
     Write-Host "  $url"
-    Write-Host 'It stops by itself a few minutes after the reader window is closed.'
+    if ($Port) { Write-Host 'Dev instance: it keeps running until you stop it (Ctrl+C).' }
+    else { Write-Host 'It stops by itself a few minutes after the reader window is closed.' }
     Open-ReaderWindow $url
 
     try {
@@ -1399,7 +1401,9 @@ function Invoke-Read {
             $task = $listener.GetContextAsync()
             $stop = $false
             while (-not $task.Wait(1000)) {
-                # The reader pings every 20 seconds while it is open.
+                # The reader pings every 20 seconds while it is open. A -Port (dev) instance
+                # keeps running until it is stopped.
+                if ($Port) { continue }
                 $limit = if ($seen) { 180 } else { 120 }
                 if (((Get-Date) - $last).TotalSeconds -gt $limit) { $stop = $true; break }
             }
