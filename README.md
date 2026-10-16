@@ -28,8 +28,9 @@ download besides these files.
    powershell -ExecutionPolicy Bypass -File .\mnote.ps1 export -OutDir "$HOME\Documents\OneNote Export"
    ```
 
-3. Install the reader for your Windows account. This makes `.mnote` and `.mnotebook` files open
-   in it, and adds it to the Start menu:
+3. Install the reader for your Windows account by double-clicking **`Install Mnote Reader.cmd`**.
+   This makes `.mnote` and `.mnotebook` files open in it, and adds it to the Start menu. To
+   choose Firefox instead of Edge, or another notes folder, run this instead:
 
    ```
    powershell -ExecutionPolicy Bypass -File .\mnote.ps1 install "$HOME\Documents\OneNote Export" -Browser firefox
@@ -148,7 +149,12 @@ powershell -ExecutionPolicy Bypass -File .\mnote.ps1 uninstall
 - adds a **Mnote Reader** shortcut to the Start menu, which opens the folder you give it
 
 `uninstall` removes both. It doesn't touch your notes or these files. If you move this
-folder, run `install` again.
+folder, run `install` again. `Install Mnote Reader.cmd` and `Uninstall Mnote Reader.cmd` do the
+same with a double-click.
+
+Run the installer yourself, from File Explorer or your own PowerShell window. Sandboxed tools,
+including AI coding agents, may write the file types into a private copy of the registry that
+Windows itself never sees.
 
 ## Export from OneNote
 
