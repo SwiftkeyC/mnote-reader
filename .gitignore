@@ -1,0 +1,11 @@
+# Created on each PC by "mnote.ps1 install"
+mnote.ico
+mnotebook.ico
+mnote.config.json
+# Temporary files from saving
+*.saving
+*.packing
+# Never commit notes
+*.mnote
+*.mnotebook
+library.json
