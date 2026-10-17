@@ -338,8 +338,9 @@ static class Setup
     }
 }
 
-// The setup window: notes folder and browser, then Install. Sizes are in 96-dpi pixels and
-// scale with the display.
+// The setup window: notes folder and browser, then Install. Sizes are in 96-dpi pixels, and S()
+// scales them to the display. WinForms' own AutoScaleMode scaled the wrapping labels twice at
+// 125%, which pushed their text past the window edge.
 sealed class SetupForm : Form
 {
     public int Result = 1602;   // "cancelled", as Windows Installer reports it
@@ -358,11 +359,17 @@ sealed class SetupForm : Form
     readonly Button cancel = new Button();
     bool busy, finished;
 
+    static readonly float DpiScale = DisplayScale();
+    static float DisplayScale() { using (Graphics g = Graphics.FromHwnd(IntPtr.Zero)) return g.DpiX / 96f; }
+    static int S(int v) { return (int)Math.Round(v * DpiScale); }
+    static Rectangle R(int x, int y, int w, int h) { return new Rectangle(S(x), S(y), S(w), S(h)); }
+    static Point P(int x, int y) { return new Point(S(x), S(y)); }
+
     public SetupForm()
     {
         SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
+        AutoScaleMode = AutoScaleMode.None;
+
         Font = new Font("Segoe UI", 9F);
         Text = "Mnote Reader " + BuildInfo.Version + " Setup";
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -370,10 +377,10 @@ sealed class SetupForm : Form
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         BackColor = Color.White;
-        ClientSize = new Size(520, 356);
+        ClientSize = new Size(S(520), S(356));
 
         PictureBox logo = new PictureBox();
-        logo.Bounds = new Rectangle(24, 22, 48, 48);
+        logo.Bounds = R(24, 22, 48, 48);
         logo.SizeMode = PictureBoxSizeMode.Zoom;
         logo.Image = Setup.Logo();
 
@@ -381,29 +388,29 @@ sealed class SetupForm : Form
         title.Text = installed == null ? "Install Mnote Reader" : "Update Mnote Reader";
         title.Font = new Font("Segoe UI Semibold", 14F);
         title.AutoSize = true;
-        title.Location = new Point(84, 18);
+        title.Location = P(84, 18);
         subtitle.Text = installed == null
             ? "Version " + BuildInfo.Version + ". Read your OneNote notes like a PDF. It installs for your Windows account only, with no administrator rights."
             : "Version " + installed + " is installed. This replaces it with version " + BuildInfo.Version + ", and keeps your notes, highlights and settings.";
         subtitle.ForeColor = Muted;
-        subtitle.Bounds = new Rectangle(86, 50, 410, 36);
+        subtitle.Bounds = R(86, 50, 410, 36);
 
-        body.Bounds = new Rectangle(0, 98, 520, 204);
-        notesBox.Bounds = new Rectangle(24, 46, 380, 25);
+        body.Bounds = R(0, 98, 520, 204);
+        notesBox.Bounds = R(24, 46, 380, 25);
         notesBox.Text = Setup.PreviousNotes() ?? Setup.DefaultNotes;
         Button browse = new Button();
         browse.Text = "Browse\u2026";
-        browse.Bounds = new Rectangle(410, 45, 86, 27);
+        browse.Bounds = R(410, 45, 86, 27);
         browse.UseVisualStyleBackColor = true;
         browse.Click += OnBrowse;
         bool hasFirefox = Setup.FirefoxInstalled();
         edge.Text = "Microsoft Edge";
         edge.AutoSize = true;
-        edge.Location = new Point(24, 112);
+        edge.Location = P(24, 112);
         firefox.Text = hasFirefox ? "Firefox" : "Firefox (not installed)";
         firefox.Enabled = hasFirefox;
         firefox.AutoSize = true;
-        firefox.Location = new Point(172, 112);
+        firefox.Location = P(172, 112);
         if (hasFirefox && Setup.ConfiguredBrowser() == "firefox") firefox.Checked = true; else edge.Checked = true;
         body.Controls.AddRange(new Control[] {
             Heading("Notes folder", 24, 2),
@@ -414,34 +421,33 @@ sealed class SetupForm : Form
             Hint("It installs to " + Setup.InstallDir + ". It adds Mnote Reader and Export OneNote to Mnote to the Start menu, and opens .mnote and .mnotebook files.", 24, 146, 472, 52),
         });
 
-        doneText.Bounds = new Rectangle(24, 104, 472, 150);
+        doneText.Bounds = R(24, 104, 472, 150);
         doneText.Visible = false;
         openNow.Text = "Open Mnote Reader now";
         openNow.Checked = true;
         openNow.AutoSize = true;
-        openNow.Location = new Point(24, 262);
+        openNow.Location = P(24, 262);
         openNow.Visible = false;
 
         Panel rule = new Panel();
-        rule.Bounds = new Rectangle(0, 307, 520, 1);
+        rule.Bounds = R(0, 307, 520, 1);
         rule.BackColor = Color.FromArgb(226, 224, 233);
         Panel footer = new Panel();
-        footer.Bounds = new Rectangle(0, 308, 520, 48);
+        footer.Bounds = R(0, 308, 520, 48);
         footer.BackColor = Color.FromArgb(244, 243, 248);
-        status.Bounds = new Rectangle(24, 15, 270, 20);
+        status.Bounds = R(24, 15, 270, 20);
         status.ForeColor = Muted;
         main.Text = installed == null ? "Install" : "Update";
-        main.Bounds = new Rectangle(316, 10, 86, 28);
+        main.Bounds = R(316, 10, 86, 28);
         main.UseVisualStyleBackColor = true;
         main.Click += OnMain;
         cancel.Text = "Cancel";
-        cancel.Bounds = new Rectangle(410, 10, 86, 28);
+        cancel.Bounds = R(410, 10, 86, 28);
         cancel.UseVisualStyleBackColor = true;
         cancel.Click += delegate { Close(); };
         footer.Controls.AddRange(new Control[] { status, main, cancel });
         AcceptButton = main;
         CancelButton = cancel;
-        ActiveControl = main;
 
         Controls.AddRange(new Control[] { logo, title, subtitle, body, doneText, openNow, rule, footer });
         ResumeLayout(false);
@@ -453,7 +459,7 @@ sealed class SetupForm : Form
         Label l = new Label();
         l.Text = text;
         l.AutoSize = true;
-        l.Location = new Point(x, y);
+        l.Location = P(x, y);
         l.Font = new Font("Segoe UI Semibold", 9F);
         return l;
     }
@@ -462,7 +468,7 @@ sealed class SetupForm : Form
     {
         Label l = new Label();
         l.Text = text;
-        l.Bounds = new Rectangle(x, y, w, h);
+        l.Bounds = R(x, y, w, h);
         l.ForeColor = Muted;
         return l;
     }
@@ -532,6 +538,14 @@ sealed class SetupForm : Form
         body.Enabled = main.Enabled = cancel.Enabled = !on;
         status.Text = on ? "Installing\u2026" : "";
         UseWaitCursor = on;
+    }
+
+    // Start on the Install button rather than in the folder box. A control can only take focus
+    // once the window is visible, so not in the constructor.
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        main.Focus();
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
