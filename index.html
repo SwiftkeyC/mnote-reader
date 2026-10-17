@@ -61,7 +61,7 @@ svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-widt
 .brand { display: flex; align-items: center; gap: 10px; font: 700 18px/1 var(--display); color: var(--text); text-decoration: none; letter-spacing: -.01em; }
 .brand img { width: 26px; height: 26px; }
 .nav-links { display: flex; gap: 22px; margin-left: auto; }
-.nav-links a { color: var(--text-2); text-decoration: none; font-size: 15px; }
+.nav-links a { color: var(--text-2); text-decoration: none; font-size: 15px; white-space: nowrap; }
 .nav-links a:hover { color: var(--text); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 46px; padding: 0 20px; border-radius: 11px; font: 600 15.5px/1 var(--font); text-decoration: none; border: 1px solid transparent; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, background .12s ease; white-space: nowrap; }
 .btn:hover { transform: translateY(-1px); }
@@ -198,6 +198,21 @@ details[open] summary::after { content: "\2212"; }
 details p { margin: -4px 0 16px; color: var(--text-2); font-size: 15px; }
 code.k { font: 13.5px ui-monospace, Consolas, monospace; background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
 
+/* downloads */
+.dl-hint { position: relative; margin: 14px 0 0; color: var(--text-2); font-size: 14px; }
+.dl-list { display: grid; gap: 12px; max-width: 900px; margin: 0 auto; }
+.dl { display: grid; grid-template-columns: 44px 1fr auto; gap: 16px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
+.dl.rec { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); box-shadow: 0 0 0 3px var(--accent-soft); }
+.dl .ic { width: 44px; height: 44px; border-radius: 11px; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; }
+.dl h3 { margin: 0 0 2px; font: 650 17px/1.3 var(--display); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dl p { margin: 0; color: var(--text-2); font-size: 14.5px; }
+.dl .fn { display: block; margin-top: 4px; font: 12.5px ui-monospace, Consolas, monospace; color: var(--text-3); overflow-wrap: anywhere; }
+.dl .acts { display: flex; gap: 8px; }
+.badge { font: 600 11.5px/1 var(--font); padding: 4px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); }
+.dl-foot { max-width: 900px; margin: 18px auto 0; }
+.dl-foot details p { margin-top: 10px; }
+pre.sums { margin: -4px 0 0; padding: 12px 14px; max-width: 100%; overflow-x: auto; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; font: 12.5px/1.6 ui-monospace, Consolas, monospace; color: var(--text); }
+
 .final { text-align: center; padding: 90px 0 96px; }
 .final .box { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent-2) 80%, #3b82f6)); color: #fff; border-radius: 22px; padding: 56px 24px; box-shadow: var(--shadow-lg); }
 .final h2 { color: #fff; margin-top: 0; }
@@ -214,9 +229,11 @@ footer a { color: var(--text-2); }
   .grid, .steps { grid-template-columns: 1fr 1fr; }
   .two { grid-template-columns: 1fr; }
 }
-@media (max-width: 680px) {
+@media (max-width: 780px) {
   .nav-links { display: none; }
   .nav .btn { margin-left: auto; }
+}
+@media (max-width: 680px) {
   .hero { padding-top: 52px; }
   .w-body { grid-template-columns: 1fr; min-height: 380px; }
   .w-side, .w-bar .r .w-ib:not(.on), .w-page, .pop { display: none; }
@@ -224,6 +241,9 @@ footer a { color: var(--text-2); }
   .w-main { padding: 16px 12px 0; }
   .sheet { padding: 22px 20px 26px; }
   .grid, .steps, .formats { grid-template-columns: 1fr; }
+  .dl { grid-template-columns: 44px 1fr; }
+  .dl .acts { grid-column: 1 / -1; }
+  .dl .acts .btn { flex: 1; }
   .fmt li code { width: 112px; }
   section { padding: 64px 0; }
 }
@@ -263,6 +283,7 @@ footer a { color: var(--text-2); }
     <nav class="nav-links" aria-label="Sections">
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
+      <a href="#download">Download</a>
       <a href="#formats">File formats</a>
       <a href="#faq">FAQ</a>
     </nav>
@@ -277,12 +298,13 @@ footer a { color: var(--text-2); }
       <h1>Your OneNote notes, as <em>files you own</em></h1>
       <p class="lead">Mnote exports your OneNote notebooks to ordinary files on your PC, and reads them like a PDF. You can search, highlight, add notes and edit, and everything is saved inside the files.</p>
       <div class="cta">
-        <a class="btn btn-primary" id="dl" href="https://github.com/SwiftkeyC/mnote-reader/archive/refs/heads/main.zip"><svg class="i"><use href="#i-dl"/></svg>Download for Windows</a>
+        <a class="btn btn-primary js-dl" href="downloads/Mnote-Setup-x64.exe" download><svg class="i"><use href="#i-dl"/></svg>Download for Windows</a>
         <a class="btn btn-ghost" href="https://github.com/SwiftkeyC/mnote-reader"><svg class="i"><use href="#i-gh"/></svg>View the code</a>
       </div>
+      <p class="dl-hint"><span id="dl-what">64-bit installer</span>, version <span class="js-ver">1.0.0</span> · <a href="#download">Other downloads</a></p>
       <div class="meta">
         <span><svg class="i"><use href="#i-win"/></svg>Windows 10 and 11</span>
-        <span><svg class="i"><use href="#i-zip"/></svg>Small ZIP, nothing to install from a store</span>
+        <span><svg class="i"><use href="#i-shield"/></svg>No admin rights needed</span>
         <span><svg class="i"><use href="#i-scale"/></svg>MIT license</span>
         <span id="updated" hidden></span>
       </div>
@@ -359,23 +381,64 @@ footer a { color: var(--text-2); }
     <div class="wrap">
       <div class="sec-head">
         <span class="tag">How it works</span>
-        <h2>Three double-clicks to your notes</h2>
-        <p>No installer wizard and no admin rights. A few small files do everything.</p>
+        <h2>Three steps to your notes</h2>
+        <p>One small installer. No admin rights, no account, nothing from a store.</p>
       </div>
       <div class="steps">
-        <div class="step"><h3>Download and unzip</h3><p>Unzip the download into a folder you'll keep, for example <code class="k">Documents\Mnote</code>.</p><span class="file"><svg class="i"><use href="#i-zip"/></svg>mnote-reader-main.zip</span></div>
-        <div class="step"><h3>Export from OneNote</h3><p>Open the OneNote desktop app with your notebooks open, then double-click this file. Your notes go to <code class="k">Documents\OneNote Export</code>.</p><span class="file"><svg class="i"><use href="#i-cmd"/></svg>Export OneNote.cmd</span></div>
-        <div class="step"><h3>Install the reader</h3><p>Double-click to make <code class="k">.mnote</code> and <code class="k">.mnotebook</code> files open in Mnote Reader, and to add it to the Start menu.</p><span class="file"><svg class="i"><use href="#i-cmd"/></svg>Install Mnote Reader.cmd</span></div>
+        <div class="step"><h3>Install Mnote</h3><p>Run the installer. It sets Mnote up for your Windows account in a few seconds, and you can uninstall it in Settings &gt; Apps.</p><span class="file"><svg class="i"><use href="#i-win"/></svg><span id="step-file">Mnote-Setup-x64.exe</span></span></div>
+        <div class="step"><h3>Export from OneNote</h3><p>Open the OneNote desktop app with your notebooks open, then choose this in the Start menu. Your notes go to <code class="k">Documents\OneNote Export</code>.</p><span class="file"><svg class="i"><use href="#i-cmd"/></svg>Export OneNote to Mnote</span></div>
+        <div class="step"><h3>Read and annotate</h3><p>Open Mnote Reader from the Start menu, or double-click any <code class="k">.mnote</code> page or <code class="k">.mnotebook</code> notebook.</p><span class="file"><img src="favicon.svg" alt="">Mnote Reader</span></div>
       </div>
-      <p class="after">Then open <b>Mnote Reader</b> from the Start menu, or double-click any exported page or notebook.</p>
+      <p class="after">Rather not install anything? The <a href="#download">portable ZIP</a> does the same with three <code class="k">.cmd</code> files you double-click.</p>
       <div class="note">
         <svg class="i"><use href="#i-warn"/></svg>
-        <div><b class="note-title">Windows may warn you about files from the internet</b><p>Before unzipping, right-click the ZIP, choose <b>Properties</b>, tick <b>Unblock</b> and click OK. If you see "Windows protected your PC" anyway, choose <b>More info &gt; Run anyway</b>. The files are plain scripts you can read on GitHub.</p></div>
+        <div><b class="note-title">Windows may warn you about a new download</b><p>The installer isn't code-signed yet. Your browser may ask whether to keep it, and Windows may say "Windows protected your PC". Keep the file, then choose <b>More info &gt; Run anyway</b>. To be sure the file is the one published here, compare it with its <a href="#download">SHA-256 checksum</a>. Everything it installs is plain scripts you can read on GitHub.</p></div>
       </div>
     </div>
   </section>
 
-  <section id="formats">
+  <section id="download">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="tag">Download</span>
+        <h2>Pick your download</h2>
+        <p>Version <span class="js-ver">1.0.0</span> for Windows 10 and 11. Every download holds the same Mnote. They only differ in how it gets onto your PC.</p>
+      </div>
+      <div class="dl-list">
+        <div class="dl rec" data-file="Mnote-Setup-x64.exe">
+          <div class="ic"><svg class="i"><use href="#i-win"/></svg></div>
+          <div><h3>Installer, 64-bit (x64) <span class="badge">Recommended</span></h3><p>For most PCs, including Windows 11 on ARM.</p><span class="fn">Mnote-Setup-x64.exe · <span data-size>84 KB</span></span></div>
+          <div class="acts"><a class="btn btn-primary btn-sm" href="downloads/Mnote-Setup-x64.exe" download><svg class="i"><use href="#i-dl"/></svg>Download .exe</a></div>
+        </div>
+        <div class="dl" data-file="Mnote-Setup-x86.exe">
+          <div class="ic"><svg class="i"><use href="#i-win"/></svg></div>
+          <div><h3>Installer, 32-bit (x86) <span class="badge" hidden>Recommended</span></h3><p>For 32-bit Windows, and Windows 10 on ARM.</p><span class="fn">Mnote-Setup-x86.exe · <span data-size>85 KB</span></span></div>
+          <div class="acts"><a class="btn btn-ghost btn-sm" href="downloads/Mnote-Setup-x86.exe" download><svg class="i"><use href="#i-dl"/></svg>Download .exe</a></div>
+        </div>
+        <div class="dl" data-file="Mnote-portable.zip">
+          <div class="ic"><svg class="i"><use href="#i-zip"/></svg></div>
+          <div><h3>Portable ZIP</h3><p>No installer. Unzip it into a folder you'll keep, then double-click the <code class="k">.cmd</code> files inside.</p><span class="fn">Mnote-portable.zip · <span data-size>52 KB</span></span></div>
+          <div class="acts"><a class="btn btn-ghost btn-sm" href="downloads/Mnote-portable.zip" download><svg class="i"><use href="#i-dl"/></svg>Download .zip</a></div>
+        </div>
+        <div class="dl">
+          <div class="ic"><svg class="i"><use href="#i-gh"/></svg></div>
+          <div><h3>Source code</h3><p>Every file in the repository, straight from GitHub, including the installer's source.</p></div>
+          <div class="acts"><a class="btn btn-ghost btn-sm" href="https://github.com/SwiftkeyC/mnote-reader/archive/refs/heads/main.zip">.zip</a><a class="btn btn-ghost btn-sm" href="https://github.com/SwiftkeyC/mnote-reader/archive/refs/heads/main.tar.gz">.tar.gz</a></div>
+        </div>
+      </div>
+      <div class="dl-foot">
+        <details><summary>SHA-256 checksums</summary>
+<pre class="sums" id="sums">1ab8163e0926219fb5cd13523f23e47d81fc5c47d1f4742b7a73343df77dcc2b  Mnote-Setup-x64.exe
+8056fb05c95663a54c728d6e1729a6625cfbf6be8d69855570bc5a95679c1f09  Mnote-Setup-x86.exe
+62e63cf3551ce08972c937fc18a861accd9e37ade28a308c9b36a9bd016bf6d2  Mnote-portable.zip</pre>
+          <p>To check a file, run <code class="k">Get-FileHash .\Mnote-Setup-x64.exe</code> in PowerShell and compare. The list is also in <a href="downloads/SHA256SUMS.txt">SHA256SUMS.txt</a>.</p>
+        </details>
+        <details><summary>Install without a window, or on many PCs</summary><p><code class="k">Mnote-Setup-x64.exe /quiet</code> installs with the defaults, and <code class="k">/uninstall /quiet</code> removes it again. Neither needs admin rights: Mnote installs for the signed-in user. Run the installer with <code class="k">/?</code> to see every option.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section id="formats" class="alt">
     <div class="wrap">
       <div class="sec-head">
         <span class="tag">Open file formats</span>
@@ -407,7 +470,7 @@ footer a { color: var(--text-2); }
     </div>
   </section>
 
-  <section id="faq" class="alt">
+  <section id="faq">
     <div class="wrap two">
       <div class="req">
         <h3>Requirements</h3>
@@ -422,7 +485,8 @@ footer a { color: var(--text-2); }
         <details><summary>Can I still use OneNote?</summary><p>Yes. Exporting only reads from OneNote and never changes your notebooks. Export again whenever you want a fresh copy. Your highlights, notes and edited pages are kept.</p></details>
         <details><summary>What about notebooks on OneDrive or a work or school account?</summary><p>Sign in to the OneNote desktop app with that account and open the notebooks there. Mnote exports whatever OneNote has open, including images, which it asks OneNote to download.</p></details>
         <details><summary>Does it work on Mac or Linux?</summary><p>Not yet. Exporting uses OneNote for Windows, and the reader is set up for Windows. Exported files are standard ZIP archives, though, so they open anywhere.</p></details>
-        <details><summary>How do I remove it?</summary><p>Double-click <code class="k">Uninstall Mnote Reader.cmd</code>, then delete the folder. Your exported notes aren't touched.</p></details>
+        <details><summary>Why are there 64-bit and 32-bit installers?</summary><p>Mnote itself is PowerShell and HTML, so it's the same on every Windows PC. Only the small setup program comes in two builds. Choose 64-bit unless your Windows is 32-bit. The download button picks the right one for your PC.</p></details>
+        <details><summary>How do I remove it?</summary><p>If you used the installer, go to Settings &gt; Apps &gt; Installed apps &gt; Mnote Reader &gt; Uninstall. With the portable ZIP, double-click <code class="k">Uninstall Mnote Reader.cmd</code>, then delete the folder. Either way, your exported notes aren't touched.</p></details>
       </div>
     </div>
   </section>
@@ -433,7 +497,7 @@ footer a { color: var(--text-2); }
         <h2>Take your notes with you</h2>
         <p>Free and open source under the MIT license. Read the code, suggest changes, or make it your own.</p>
         <div class="cta">
-          <a class="btn btn-primary" href="https://github.com/SwiftkeyC/mnote-reader/archive/refs/heads/main.zip"><svg class="i"><use href="#i-dl"/></svg>Download for Windows</a>
+          <a class="btn btn-primary js-dl" href="downloads/Mnote-Setup-x64.exe" download><svg class="i"><use href="#i-dl"/></svg>Download for Windows</a>
           <a class="btn btn-ghost" href="https://github.com/SwiftkeyC/mnote-reader"><svg class="i"><use href="#i-gh"/></svg>GitHub</a>
         </div>
       </div>
@@ -460,6 +524,44 @@ fetch('https://api.github.com/repos/SwiftkeyC/mnote-reader/commits/main')
     el.hidden = false;
   })
   .catch(() => {});
+
+// Points the download buttons at the installer for this PC, and shows the version, sizes and
+// checksums from downloads/release.json. Without either, the page keeps its defaults.
+(async () => {
+  const ua = navigator.userAgent;
+  let arch = 'x64';
+  try {
+    const d = navigator.userAgentData && await navigator.userAgentData.getHighEntropyValues(['architecture', 'bitness']);
+    if (d && d.architecture === 'arm') arch = 'arm';
+    else if (d && d.bitness === '32') arch = 'x86';
+  } catch (e) {}
+  // Browsers without userAgentData (Firefox) still say Win64 or WOW64 on 64-bit Windows.
+  if (!navigator.userAgentData && /Windows/.test(ua) && !/Win64|WOW64|x64|ARM/i.test(ua)) arch = 'x86';
+  // Windows 10 on ARM only emulates 32-bit apps, so ARM PCs get the 32-bit installer.
+  const file = arch === 'x64' ? 'Mnote-Setup-x64.exe' : 'Mnote-Setup-x86.exe';
+  document.querySelectorAll('a.js-dl').forEach(a => { a.href = 'downloads/' + file; });
+  document.querySelectorAll('.dl[data-file]').forEach(row => {
+    const rec = row.dataset.file === file;
+    row.classList.toggle('rec', rec);
+    const badge = row.querySelector('.badge');
+    if (badge) badge.hidden = !rec;
+    const btn = row.querySelector('.acts .btn');
+    if (btn && row.dataset.file.endsWith('.exe')) btn.className = 'btn btn-sm ' + (rec ? 'btn-primary' : 'btn-ghost');
+  });
+  document.getElementById('step-file').textContent = file;
+  document.getElementById('dl-what').textContent = !/Windows/.test(ua) ? 'For Windows 10 and 11'
+    : arch === 'x64' ? '64-bit installer' : arch === 'arm' ? '32-bit installer, which runs on Windows on ARM' : '32-bit installer';
+
+  try {
+    const r = await fetch('downloads/release.json', { cache: 'no-cache' }).then(res => res.json());
+    document.querySelectorAll('.js-ver').forEach(el => { el.textContent = r.version; });
+    document.querySelectorAll('.dl[data-file]').forEach(row => {
+      const f = r.files[row.dataset.file], size = row.querySelector('[data-size]');
+      if (f && size) size.textContent = Math.round(f.size / 1024) + ' KB';
+    });
+    document.getElementById('sums').textContent = Object.entries(r.files).map(([n, f]) => f.sha256 + '  ' + n).join('\n');
+  } catch (e) {}
+})();
 </script>
 </body>
 </html>
