@@ -1501,11 +1501,14 @@ function Send-AssocChanged {
 }
 
 function Get-ShortcutPath { Join-Path ([Environment]::GetFolderPath('Programs')) 'Mnote Reader.lnk' }
+function Get-ExportShortcutPath { Join-Path ([Environment]::GetFolderPath('Programs')) 'Export OneNote to Mnote.lnk' }
 
 function Invoke-Install {
     $script = Join-Path $PSScriptRoot 'mnote.ps1'
     if (-not [IO.File]::Exists((Join-Path $PSScriptRoot 'mnote-reader.html'))) { throw "mnote-reader.html must be next to mnote.ps1 in $PSScriptRoot" }
-    $library = if ($Path) { (Resolve-Path -LiteralPath $Path).ProviderPath.TrimEnd('\') } else { Get-LibraryDir }
+    # The export folder is created if it isn't there yet, so the Start menu shortcut always opens.
+    $library = if ($Path) { [IO.Path]::GetFullPath([IO.Path]::Combine((Get-Location).ProviderPath, $Path)).TrimEnd('\') } else { Get-LibraryDir }
+    [void][IO.Directory]::CreateDirectory($library)
     $ps = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 
     $cfg = Get-ReaderConfig
@@ -1551,9 +1554,22 @@ function Invoke-Install {
     $lnk.WindowStyle = 7
     $lnk.Save()
 
+    # Export OneNote.cmd, in the Start menu too, writing to the same folder.
+    $exportCmd = Join-Path $PSScriptRoot 'Export OneNote.cmd'
+    if ([IO.File]::Exists($exportCmd)) {
+        $lnk = $wsh.CreateShortcut((Get-ExportShortcutPath))
+        $lnk.TargetPath = $exportCmd
+        $lnk.Arguments = "-OutDir `"$library`""
+        $lnk.WorkingDirectory = $PSScriptRoot
+        $lnk.IconLocation = "$icon,0"
+        $lnk.Description = 'Export the notebooks open in OneNote to .mnote files'
+        $lnk.Save()
+    }
+
     Write-Host 'Mnote Reader is installed for your Windows account:'
     Write-Host '  - Double-clicking a .mnote page or a .mnotebook notebook opens it in the reader.'
     Write-Host "  - Start menu: 'Mnote Reader' opens $library"
+    if ([IO.File]::Exists($exportCmd)) { Write-Host "  - Start menu: 'Export OneNote to Mnote' exports the notebooks open in OneNote to $library" }
     if ($cfg.browser -eq 'firefox') { Write-Host "  - It opens in its own Firefox window (separate profile: $FirefoxProfile)." }
     else { Write-Host '  - It opens in its own Microsoft Edge app window.' }
     foreach ($t in $FileTypes) {
@@ -1570,9 +1586,9 @@ function Invoke-Uninstall {
         if ((Test-Path $ext) -and (Get-Item $ext).GetValue('') -eq $t.ProgId) { Remove-Item -Path $ext -Recurse -Force }
         if (Test-Path "$ClassesKey\$($t.ProgId)") { Remove-Item -Path "$ClassesKey\$($t.ProgId)" -Recurse -Force }
     }
-    if ([IO.File]::Exists((Get-ShortcutPath))) { [IO.File]::Delete((Get-ShortcutPath)) }
+    foreach ($lnk in (Get-ShortcutPath), (Get-ExportShortcutPath)) { if ([IO.File]::Exists($lnk)) { [IO.File]::Delete($lnk) } }
     Send-AssocChanged
-    Write-Host 'Removed the .mnote and .mnotebook file types and the Start menu shortcut. Your notes and these files were not touched.'
+    Write-Host 'Removed the .mnote and .mnotebook file types and the Start menu shortcuts. Your notes and these files were not touched.'
 }
 
 switch ($Command) {

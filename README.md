@@ -20,23 +20,43 @@ download besides these files.
 - The OneNote desktop app (Microsoft 365 or OneNote 2016), but only for exporting
 - Firefox (including the Microsoft Store version) or Microsoft Edge, for the reader
 
+## Download
+
+| Download | For |
+|----------|-----|
+| [Mnote-Setup-x64.exe](https://swiftkeyc.github.io/mnote-reader/downloads/Mnote-Setup-x64.exe) | Installer for 64-bit Windows: most PCs, and Windows 11 on ARM |
+| [Mnote-Setup-x86.exe](https://swiftkeyc.github.io/mnote-reader/downloads/Mnote-Setup-x86.exe) | Installer for 32-bit Windows, and Windows 10 on ARM |
+| [Mnote-portable.zip](https://swiftkeyc.github.io/mnote-reader/downloads/Mnote-portable.zip) | No installer: unzip it, then use the `.cmd` files inside |
+
+[SHA256SUMS.txt](https://swiftkeyc.github.io/mnote-reader/downloads/SHA256SUMS.txt) has the
+checksums. Every download holds the same Mnote. Mnote is PowerShell and HTML, so only the setup
+program differs between 64-bit and 32-bit.
+
 ## Get started
 
-1. Put this repository in a folder you'll keep, for example `Documents\Mnote`. Either use
-   **Code > Download ZIP** and unzip it, or run `git clone`.
-2. Export your notebooks. Open the OneNote desktop app with your notebooks open, then
-   double-click **`Export OneNote.cmd`**. It writes everything to `Documents\OneNote Export`.
-   For more options, see [Export from OneNote](#export-from-onenote).
+1. Run the installer. It installs Mnote for your Windows account, with no administrator rights,
+   in `%LOCALAPPDATA%\Programs\Mnote`. It asks where your notes go, and whether the reader
+   opens in Edge or Firefox.
+2. Export your notebooks. Open the OneNote desktop app with your notebooks open, then choose
+   **Export OneNote to Mnote** in the Start menu. It writes everything to
+   `Documents\OneNote Export`. For more options, see [Export from OneNote](#export-from-onenote).
+3. Open **Mnote Reader** from the Start menu, or double-click any `.mnote` or `.mnotebook` file.
 
-3. Install the reader for your Windows account by double-clicking **`Install Mnote Reader.cmd`**.
-   This makes `.mnote` and `.mnotebook` files open in it, and adds it to the Start menu. To
-   choose Firefox instead of Edge, or another notes folder, run this instead:
+To uninstall, go to Settings > Apps > Installed apps > Mnote Reader. Your notes aren't touched.
+
+### Without the installer
+
+1. Unzip `Mnote-portable.zip` into a folder you'll keep, for example `Documents\Mnote`. You can
+   also use this repository: **Code > Download ZIP**, or `git clone`.
+2. Open the OneNote desktop app with your notebooks open, then double-click
+   **`Export OneNote.cmd`**.
+3. Double-click **`Install Mnote Reader.cmd`**. This makes `.mnote` and `.mnotebook` files open
+   in the reader, and adds Mnote Reader and Export OneNote to Mnote to the Start menu. To choose
+   Firefox instead of Edge, or another notes folder, run this instead:
 
    ```
    powershell -ExecutionPolicy Bypass -File .\mnote.ps1 install "$HOME\Documents\OneNote Export" -Browser firefox
    ```
-
-4. Open **Mnote Reader** from the Start menu, or double-click any `.mnote` or `.mnotebook` file.
 
 ## Read your notes
 
@@ -132,7 +152,18 @@ Inside, a `.mnotebook` is a ZIP archive:
 
 ## Install and uninstall
 
-Keep `mnote.ps1` and `mnote-reader.html` together in one folder, then run:
+The installers do all of this for you. They also add Mnote Reader to Settings > Apps, and run
+without a window too:
+
+```
+Mnote-Setup-x64.exe /quiet
+Mnote-Setup-x64.exe /uninstall /quiet
+```
+
+`/quiet` uses the notes folder and browser from an earlier install. If there isn't one, it uses
+`Documents\OneNote Export` and Edge.
+
+Without the installer, keep `mnote.ps1` and `mnote-reader.html` together in one folder, then run:
 
 ```
 powershell -ExecutionPolicy Bypass -File .\mnote.ps1 install "$HOME\Documents\OneNote Export" -Browser firefox
@@ -146,9 +177,11 @@ powershell -ExecutionPolicy Bypass -File .\mnote.ps1 uninstall
 
 - makes `.mnote` files ("OneNote page (Mnote)") and `.mnotebook` files ("OneNote notebook
   (Mnote)") open in the reader, each type with its own icon
-- adds a **Mnote Reader** shortcut to the Start menu, which opens the folder you give it
+- adds a **Mnote Reader** shortcut to the Start menu, which opens the folder you give it. It
+  creates the folder if it isn't there yet.
+- adds **Export OneNote to Mnote** to the Start menu, which exports to that folder
 
-`uninstall` removes both. It doesn't touch your notes or these files. If you move this
+`uninstall` removes all of these. It doesn't touch your notes or these files. If you move this
 folder, run `install` again. `Install Mnote Reader.cmd` and `Uninstall Mnote Reader.cmd` do the
 same with a double-click.
 
@@ -203,6 +236,24 @@ A `.mnote` file is a ZIP archive. To look inside, rename it to `.zip`.
 
 Each highlight records where it sits in the page's text, plus the quoted words and a little of
 the text around them. So it still finds its place if the page text shifts slightly.
+
+## Build the downloads
+
+`installer\build.ps1` builds everything in the Download table into `docs\downloads`, together
+with `SHA256SUMS.txt` and `release.json`. The website reads `release.json` for the version and
+sizes:
+
+```
+powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -Version 1.0.1
+```
+
+The installers are compiled from `installer\setup.cs` with the C# compiler that comes with
+Windows, so there's nothing to install first. The website is `docs\`, published on the
+`gh-pages` branch:
+
+```
+git subtree push --prefix docs origin gh-pages
+```
 
 ## Known limits
 
