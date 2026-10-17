@@ -1,14 +1,14 @@
 {
-    "version":  "1.0.0",
+    "version":  "1.0.1",
     "date":  "2026-10-17",
     "files":  {
                   "Mnote-Setup-x64.exe":  {
-                                              "size":  85504,
-                                              "sha256":  "1ab8163e0926219fb5cd13523f23e47d81fc5c47d1f4742b7a73343df77dcc2b"
+                                              "size":  86016,
+                                              "sha256":  "42887e58211f0b73a0bd611711a4bb4ea1ba8e0b95a52bbdc4eabbd9dd1f2802"
                                           },
                   "Mnote-Setup-x86.exe":  {
                                               "size":  86528,
-                                              "sha256":  "8056fb05c95663a54c728d6e1729a6625cfbf6be8d69855570bc5a95679c1f09"
+                                              "sha256":  "024b74049b30382f94d1eb8ab4da04ba0cd5f48a7f9ed3dc41dabb3b75ef11b2"
                                           },
                   "Mnote-portable.zip":  {
                                              "size":  53607,
