@@ -31,25 +31,26 @@
   .\mnote.ps1 info ".\OneNote Export\My Notebook\Section\01 Page.mnote"
   .\mnote.ps1 install "$HOME\Documents\OneNote Export"   # double-click opening + Start menu
   .\mnote.ps1 uninstall
+  .\mnote.ps1 mcp "$HOME\Documents\OneNote Export"       # MCP server for AI assistants (needs Node.js)
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [ValidateSet('list', 'export', 'read', 'view', 'info', 'pack', 'unpack', 'install', 'uninstall')]
+    [ValidateSet('list', 'export', 'read', 'view', 'info', 'pack', 'unpack', 'install', 'uninstall', 'mcp')]
     [string]$Command,
 
     # The .mnote or .mnotebook file for 'view' and 'info'; a .mnote / .mnotebook file or the
-    # export folder for 'read'; a notebook folder for 'pack'; a .mnotebook file for 'unpack';
-    # the export folder the Start menu shortcut opens, for 'install'.
+    # export folder for 'read' and 'mcp'; a notebook folder for 'pack'; a .mnotebook file for
+    # 'unpack'; the export folder the Start menu shortcut opens, for 'install'.
     [Parameter(Position = 1)]
     [string]$Path,
 
     # 'read' only: start the reader without opening a window.
     [switch]$NoBrowser,
 
-    # 'read' only: serve on exactly this port, as a separate instance (for a dev preview).
+    # 'read': serve on exactly this port, as a separate instance (for a dev preview).
     # It never takes over an already running reader, is not used for double-clicked files, and
-    # does not stop by itself when no window is open.
+    # does not stop by itself when no window is open. 'mcp': the MCP server's port (default 47880).
     [int]$Port = 0,
 
     # Only these notebooks (by the name shown in OneNote). Default: all open notebooks.
@@ -1591,6 +1592,32 @@ function Invoke-Uninstall {
     Write-Host 'Removed the .mnote and .mnotebook file types and the Start menu shortcuts. Your notes and these files were not touched.'
 }
 
+# ---------------------------------------------------------------- MCP server
+# 'mcp' runs the MCP server in mcp\ (Node.js): AI assistants get your library as tools, and a
+# study coach that quizzes you from your highlights. See the README for connecting a client.
+
+function Invoke-Mcp {
+    $dir = Join-Path $PSScriptRoot 'mcp'
+    $server = Join-Path $dir 'src\server.js'
+    if (-not [IO.File]::Exists($server)) { throw "The MCP server is not in this folder: $dir. Download the repository from GitHub to get it." }
+    $node = Get-Command node -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $node) { throw 'The MCP server needs Node.js 20 or later. Install it from https://nodejs.org, then run this again.' }
+    if (-not [IO.Directory]::Exists((Join-Path $dir 'node_modules'))) {
+        Write-Host 'Installing the MCP server (first run only)...'
+        Push-Location $dir
+        try {
+            & npm ci --omit=dev --no-audit --no-fund
+            if ($LASTEXITCODE -ne 0) { throw 'Installing the MCP server failed (npm ci).' }
+        }
+        finally { Pop-Location }
+    }
+    $library = if ($Path) { (Resolve-Path -LiteralPath $Path).ProviderPath } else { Get-LibraryDir }
+    $nodeArgs = @($server, '--library', $library)
+    if ($Port) { $nodeArgs += @('--port', [string]$Port) }
+    & $node.Source @nodeArgs
+    exit $LASTEXITCODE
+}
+
 switch ($Command) {
     'list' { Invoke-List }
     'export' { Invoke-Export }
@@ -1609,4 +1636,5 @@ switch ($Command) {
     'unpack' { Invoke-Unpack }
     'install' { Invoke-Install }
     'uninstall' { Invoke-Uninstall }
+    'mcp' { Invoke-Mcp }
 }

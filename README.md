@@ -10,9 +10,12 @@ you a reader app to read, search, highlight, annotate and edit them.
 - **`.mnotebook`**: a whole notebook in one file.
 - **Mnote Reader**: reads them like a PDF. It has a contents sidebar, search, highlights,
   notes, bookmarks and a page editor, and it opens in its own Firefox or Edge window.
+- **Mnote MCP server** (optional): lets AI assistants such as Alexa+, Claude or VS Code search
+  and read your notes, add notes to them, and quiz you on your own highlights. See
+  [Study with an AI assistant](#study-with-an-ai-assistant-the-mcp-server).
 
-Everything runs on your own PC. There are no servers and no accounts, and there's nothing to
-download besides these files.
+Everything runs on your own PC. There are no cloud services and no accounts, and there's
+nothing to download besides these files.
 
 ## Requirements
 
@@ -149,6 +152,150 @@ Inside, a `.mnotebook` is a ZIP archive:
 | `mimetype`      | `application/vnd.mnotebook+zip`. Always the first entry.          |
 | `notebook.json` | Notebook name, when it was packed, and the section and page order |
 | `pages/<section>/<NN title>.mnote` | Each page, as its complete original `.mnote` file |
+
+## Study with an AI assistant: the MCP server
+
+`mcp\` is a [Model Context Protocol](https://modelcontextprotocol.io) server for your Mnote
+library. It runs on your own PC, implements MCP 2025-11-25 over Streamable HTTP, and is built
+with the official MCP TypeScript SDK. Any MCP client can connect to it: Alexa+, Claude, VS Code,
+the MCP Inspector, and others.
+
+| Tool | What it does |
+|------|--------------|
+| `list_notebooks` | Notebooks, sections and pages, with how many highlights, notes and bookmarks each has |
+| `search_notes` | Searches page text, titles, highlights and notes, like the reader's search box |
+| `read_page` | One page's text with its highlights and notes. Pages can be named loosely ("the pricing page") or by page number |
+| `list_highlights_and_notes` | Everything you marked, by notebook, section, page or colour |
+| `add_note` | Saves a note on a page, or on a passage, which becomes a highlight. It goes in the page's `annotations.json`, just as if you'd made it in Mnote Reader |
+| `quiz_me` | **Study coach.** A fill-in-the-blank question made from one of your highlights |
+| `answer_quiz` | Checks your answer, typed or spoken, and asks the next question |
+| `study_progress` | Your score today, your day streak, what's due, and the passages you miss most |
+
+The study coach uses spaced repetition: a question you get wrong comes back a few minutes
+later, and one you get right comes back after 1, 2, 4, 8 and then 16 days. Answer checking
+allows for capitals, plurals, small typos and speech-recognition slips. Your progress is saved
+in `mnote-study.json` next to your notebooks, so it carries over between conversations and
+devices. Two prompts, `study_session` and `review_my_mistakes`, start a session in clients that
+show prompts. When a page name in `add_note` fits more than one page, clients that support MCP
+elicitation ask you which page you mean.
+
+### Run it
+
+You need [Node.js](https://nodejs.org) 20 or later, and this repository: **Code > Download
+ZIP**, or `git clone`. The MCP server isn't in the installers or the portable ZIP.
+
+```
+powershell -ExecutionPolicy Bypass -File .\mnote.ps1 mcp "$HOME\Documents\OneNote Export"
+```
+
+The first run installs the server's packages, which takes a minute. After that, the server
+starts in a second and prints its address:
+
+```
+Mnote MCP server 1.0.0 (MCP 2025-11-25, Streamable HTTP)
+  Library:  C:\Users\you\Documents\OneNote Export
+            3 notebook(s), 214 page(s)
+  Endpoint: http://127.0.0.1:47880/mcp
+```
+
+Press Ctrl+C to stop it. Add `-Port 48000` to use another port. Without `mnote.ps1`:
+
+```
+cd mcp
+npm install
+npm start -- --library "$HOME\Documents\OneNote Export"
+```
+
+`--library` takes your export folder or a single `.mnotebook` file. Run
+`node src\server.js --help` to see every option.
+
+To try it without your own notes, make the fictional sample library. It has two notebooks and
+16 highlights, and is written to `%TEMP%\mnote-demo`:
+
+```
+powershell -ExecutionPolicy Bypass -File .\mcp\sample\make-sample-library.ps1
+powershell -ExecutionPolicy Bypass -File .\mnote.ps1 mcp "$env:TEMP\mnote-demo"
+```
+
+### Connect an assistant on this PC
+
+- **MCP Inspector:** run `npx @modelcontextprotocol/inspector` and open the address it prints.
+  Choose **Add Servers > Add manually**, pick the **streamable-http** transport, enter
+  `http://127.0.0.1:47880/mcp`, add it, and switch it on. The **Tools** tab then lists the
+  tools. Or call a tool from the command line:
+
+  ```
+  npx @modelcontextprotocol/inspector --cli http://127.0.0.1:47880/mcp --method tools/call --tool-name quiz_me
+  ```
+
+- **Claude Code:** `claude mcp add --transport http mnote http://127.0.0.1:47880/mcp`
+- **VS Code:** add this to `.vscode/mcp.json`:
+
+  ```json
+  { "servers": { "mnote": { "type": "http", "url": "http://127.0.0.1:47880/mcp" } } }
+  ```
+
+Then ask something like "What did I highlight about availability zones?", "Add a note to my
+pricing page: spot instances can be taken back", or "Quiz me on my study notebook".
+
+### Connect Alexa+
+
+Alexa+ connects to MCP servers from the internet, over HTTPS, with OAuth 2.1 account linking.
+The server includes everything this needs:
+
+1. Give your PC a public HTTPS address with a tunnel, for example
+   `cloudflared tunnel --url http://127.0.0.1:47880`. It prints an address like
+   `https://example-words.trycloudflare.com`.
+2. Start the server with that address:
+
+   ```
+   cd mcp
+   node src\server.js --library "$HOME\Documents\OneNote Export" --public-url https://example-words.trycloudflare.com
+   ```
+
+   This turns on sign-in. The server prints the OAuth authorization and token addresses, a
+   client ID and secret, and a passphrase. They're saved in
+   `%LOCALAPPDATA%\Mnote\mcp-oauth.json`, so they stay the same next time. Requests without a
+   valid token get `401 Unauthorized`.
+3. Create and deploy the add-on with Amazon's Alexa AI CLI, giving it your MCP address:
+   `alexa-ai new mcp --name "Mnote" --locale en-US --mcp-server-url https://example-words.trycloudflare.com/mcp`,
+   then `alexa-ai deploy`. For account linking, give it the authorization and token addresses,
+   client ID and client secret that the server printed. See Amazon's
+   [Alexa+ MCP add-on guide](https://developer.amazon.com/docs/alexaplus/add-ons/mcp-toolkit-quickstart.html)
+   and its [authentication page](https://developer.amazon.com/docs/alexaplus/add-ons/mcp-toolkit-authentication.html).
+4. When you link the add-on, the server shows a consent page. Type your passphrase there to
+   allow it. Then try it in the Alexa+ web simulator: "Quiz me on my notes."
+
+The server provides what Amazon's guide asks for: Streamable HTTP, protocol 2025-11-25 (it also
+accepts the older versions clients may ask for), OAuth discovery documents at
+`/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`,
+authorization code with PKCE (S256), client credentials, and refresh tokens. Tools answer in a
+few milliseconds, well under Alexa's 500 ms limit. Clients that send each request on its own,
+without an MCP session, are answered too.
+
+For other remote clients that can send a header, `--token <secret>` (or `MNOTE_MCP_TOKEN`)
+also works: they send `Authorization: Bearer <secret>`.
+
+### What it keeps safe
+
+- It listens on `127.0.0.1` only, so nothing else on your network can connect, unless you give
+  it `--host`. Listening on another address needs a token or OAuth, and it makes up a token if
+  you give neither. Through a tunnel with `--public-url`, every request needs an OAuth token.
+- Web pages from other sites are refused (`Origin` check). Without sign-in, requests addressed
+  to any host name other than this PC are refused too (DNS rebinding).
+- It only reads your library folder. The only things it writes are `annotations.json` inside a
+  page (the same format, and the same safe save, as the reader), `mnote-study.json` next to
+  your notebooks, and its sign-in file.
+- If Mnote Reader has a page open when a note is added to it, reload the reader (F5) before
+  you change that page's notes there. Otherwise the reader saves its older copy over the new
+  note.
+
+### Tests
+
+`npm test` in `mcp\` builds the sample library, starts the server, and checks every tool through
+the official MCP client. It also checks the study coach across restarts, sessionless requests,
+the security checks, and the OAuth flow. The tests need Windows, because the sample library is
+packed by `mnote.ps1`.
 
 ## Install and uninstall
 

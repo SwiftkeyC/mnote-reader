@@ -1,0 +1,25 @@
+{
+  "name": "mnote-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Mnote: your exported OneNote notes as tools, with a study coach that quizzes you from your own highlights",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "mnote-mcp": "src/server.js"
+  },
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "fflate": "^0.8.3",
+    "parse5": "^8.0.1",
+    "zod": "^4.6.7"
+  }
+}

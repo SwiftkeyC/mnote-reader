@@ -9,3 +9,6 @@ mnote.config.json
 *.mnote
 *.mnotebook
 library.json
+# MCP server: packages, and the study coach's progress next to a library
+mcp/node_modules/
+mnote-study.json
