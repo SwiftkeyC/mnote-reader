@@ -12,7 +12,8 @@ you a reader app to read, search, highlight, annotate and edit them.
   notes, bookmarks and a page editor, and it opens in its own Firefox or Edge window.
 - **Mnote MCP server** (optional): lets AI assistants such as Alexa+, Claude or VS Code search
   and read your notes, add notes to them, and quiz you on your own highlights. See
-  [Study with an AI assistant](#study-with-an-ai-assistant-the-mcp-server).
+  [Study with an AI assistant](#study-with-an-ai-assistant-the-mcp-server), or try it on sample
+  notes in a few commands: [Try it on an Alexa-like screen](#try-it-on-an-alexa-like-screen-simulator).
 
 Everything runs on your own PC. There are no cloud services and no accounts, and there's
 nothing to download besides these files.
@@ -207,21 +208,28 @@ to developers in the Alexa+ private preview. `mcp\sim\` is a stand-in you can ru
 a simulated Alexa+ host, not Amazon software. It shows the flashcard on an Echo Show-sized screen
 and lets you talk to "Alexa" by typing, with buttons, or with your microphone.
 
-```
-powershell -ExecutionPolicy Bypass -File .\mcp\sample\make-sample-library.ps1
-powershell -ExecutionPolicy Bypass -File .\mnote.ps1 mcp "$env:TEMP\mnote-demo"
-```
-
-Then, in a second window:
+The quickest way to try it needs only [Git](https://git-scm.com) and
+[Node.js](https://nodejs.org) 20 or later. It doesn't need OneNote or any notes of your own:
 
 ```
-cd mcp
+git clone https://github.com/SwiftkeyC/mnote-reader.git
+cd mnote-reader/mcp
 npm install
-npm run sim
+npm run demo
 ```
 
-Open `http://127.0.0.1:47890/` and say "Quiz me". Answer by touching the card or by saying the
-answer, and switch between the two as you like.
+`npm run demo` copies the fictional sample library (`mcp/sample/library`) to a temporary folder,
+starts the MCP server on it and the simulator, and opens `http://127.0.0.1:47890/` in your
+browser. Say "Quiz me", then answer by touching the card or by saying the answer, and switch
+between the two as you like. The window you ran it in shows each tool call. Press Ctrl+C to stop.
+Your answers are remembered the next time you run it; `npm run demo -- --fresh` starts over.
+
+The MCP server and the simulator are plain Node.js, so they should run on macOS and Linux too,
+but they have only been tested on Windows. Exporting from OneNote and Mnote Reader itself need
+Windows.
+
+To use the simulator with a server you started yourself, run `npm run sim` instead and open
+`http://127.0.0.1:47890/`.
 
 What's real and what's simulated:
 
@@ -239,8 +247,8 @@ What's real and what's simulated:
   sizes follow Amazon's Alexa+ design guide: a 768x480 canvas scaled 1.667 times for Echo Show 8
   and 15, plus Echo Show 5, a phone, and the web.
 
-`npm run sim -- --port 48001 --server http://127.0.0.1:48000/mcp` uses other ports. The simulator
-only listens on this PC.
+`npm run sim -- --port 48001 --server http://127.0.0.1:48000/mcp` uses other ports, and so does
+`npm run demo -- --port 48000 --sim-port 48001`. Both only listen on this PC.
 
 ### Run it
 
@@ -273,7 +281,8 @@ npm start -- --library "$HOME\Documents\OneNote Export"
 `node src\server.js --help` to see every option.
 
 To try it without your own notes, make the fictional sample library. It has two notebooks and
-16 highlights, and is written to `%TEMP%\mnote-demo`:
+16 highlights, and is written to `%TEMP%\mnote-demo` (a ready-made copy is in
+`mcp\sample\library`, which `npm run demo` uses):
 
 ```
 powershell -ExecutionPolicy Bypass -File .\mcp\sample\make-sample-library.ps1

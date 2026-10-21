@@ -12,7 +12,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { AppBridge, PostMessageTransport, getToolUiResourceUri } from '@modelcontextprotocol/ext-apps/app-bridge';
 
 const params = new URLSearchParams(location.search);
-const SERVER = params.get('server') || 'http://127.0.0.1:47880/mcp';
+const SERVER = params.get('server') || document.querySelector('meta[name="mnote-mcp-server"]')?.content || 'http://127.0.0.1:47880/mcp';
 
 // Amazon: Alexa+ UI is authored on a 768x480 base canvas and scaled per device class (root scale
 // 1.667 for the 1280x800 Echo Show 8 and 15). h 0 means the frame grows with the card (web chat).

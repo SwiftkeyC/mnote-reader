@@ -1,0 +1,21 @@
+{
+    "format":  "mnote-library",
+    "version":  1,
+    "notebooks":  [
+                      {
+                          "name":  "Study notebook",
+                          "sections":  [
+                                           "Getting started",
+                                           "Cloud basics",
+                                           "Security",
+                                           "Revision"
+                                       ]
+                      },
+                      {
+                          "name":  "Economics",
+                          "sections":  [
+                                           "Markets"
+                                       ]
+                      }
+                  ]
+}

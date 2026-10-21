@@ -14,8 +14,9 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test",
-    "sim": "node sim/serve.js"
+    "demo": "node sim/demo.js",
+    "sim": "node sim/serve.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.5",

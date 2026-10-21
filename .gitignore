@@ -9,6 +9,9 @@ mnote.config.json
 *.mnote
 *.mnotebook
 library.json
+# ...except the fictional sample library the demo runs on (mcp/sample/make-sample-library.ps1)
+!mcp/sample/library/*.mnotebook
+!mcp/sample/library/library.json
 # MCP server: packages, and the study coach's progress next to a library
 mcp/node_modules/
 mnote-study.json

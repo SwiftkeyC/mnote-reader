@@ -6,7 +6,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { buildSim } from './build.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const { values } = parseArgs({ options: { port: { type: 'string' }, server: { type: 'string' }, help: { type: 'boolean', short: 'h' } } });
@@ -18,8 +17,19 @@ const port = Number(values.port || 47890);
 const server = values.server || 'http://127.0.0.1:47880/mcp';
 
 let bundle;
-try { bundle = await buildSim(); } catch (err) { console.error(`Could not build the simulator: ${err.message}`); process.exit(1); }
-const page = fs.readFileSync(path.join(here, 'index.html'));
+try {
+  const { buildSim } = await import('./build.js');
+  bundle = await buildSim();
+} catch (err) {
+  console.error(err.code === 'ERR_MODULE_NOT_FOUND'
+    ? 'The simulator needs its development packages. Run "npm install" in the mcp folder first.'
+    : `Could not build the simulator: ${err.message}`);
+  process.exit(1);
+}
+// The page connects to the MCP server named here (a ?server= address in the URL wins).
+const attr = s => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+const page = fs.readFileSync(path.join(here, 'index.html'), 'utf8')
+  .replace('<meta name="mnote-mcp-server" content="">', `<meta name="mnote-mcp-server" content="${attr(server)}">`);
 
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
@@ -31,9 +41,8 @@ http.createServer((req, res) => {
   console.error(err.code === 'EADDRINUSE' ? `Port ${port} is in use. Pick another with --port.` : err.message);
   process.exit(1);
 }).listen(port, '127.0.0.1', () => {
-  const open = `http://127.0.0.1:${port}/` + (values.server ? `?server=${encodeURIComponent(server)}` : '');
   console.log('Mnote Alexa-like simulator (not Amazon software)');
   console.log(`  MCP server: ${server}`);
-  console.log(`  Open:       ${open}`);
+  console.log(`  Open:       http://127.0.0.1:${port}/`);
   console.log('  Press Ctrl+C to stop.');
 });
