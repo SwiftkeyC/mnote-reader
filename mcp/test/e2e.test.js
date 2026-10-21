@@ -338,7 +338,10 @@ test('MCP Apps: quiz_me and answer_quiz link the flashcard, a self-contained ui:
   const vm = await import('node:vm');
   const script = /<script>([\s\S]*?)<\/script>/.exec(c.text)[1];
   assert.doesNotThrow(() => new vm.Script(script), 'the inline script compiles');
-  for (const m of ['ui/initialize', 'ui/notifications/initialized', 'ui/notifications/tool-result', 'tools/call', 'answer_quiz']) assert.ok(script.includes(m), m);
+  for (const m of ['ui/initialize', 'ui/notifications/initialized', 'ui/notifications/tool-result', 'tools/call', 'answer_quiz', 'ui/update-model-context']) assert.ok(script.includes(m), m);
+  // Hosts may sandbox the card without allow-forms, where a <form> never submits.
+  assert.ok(!script.includes("h('form'") && !/<form/i.test(c.text.replace(script, '')), 'answers are sent without a <form>');
+  assert.match(script, /onkeydown: e => \{ if \(e\.key === 'Enter'/, 'Enter sends the answer');
   // Text-only clients get the same answers as before, plus the question that was asked.
   const q = await call(client, 'quiz_me', {});
   const r = await call(client, 'answer_quiz', { question_id: q.questionId, answer: 'x', next: false });

@@ -55,7 +55,7 @@
 }
 
 /* 16px at the 768px base canvas; the type grows with the screen, so it reads from across a room. */
-html { font-size: clamp(15px, calc(100vw / 48), 32px); -webkit-text-size-adjust: 100%; }
+html { font-size: clamp(15px, calc(100vw / 48), 40px); -webkit-text-size-adjust: 100%; }
 *, *::before, *::after { box-sizing: border-box; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
@@ -87,7 +87,7 @@ body {
 .blank { display: inline-block; width: 4.2em; height: 0.95em; margin: 0 0.12em; vertical-align: -0.12em; border-bottom: 0.13em solid var(--accent); }
 .hint { margin: 0; padding: 0.5rem 0.85rem; border-radius: 0.6rem; background: var(--accent-soft); font-size: 1.2rem; }
 
-form { display: flex; gap: 0.6rem; }
+.answer { display: flex; gap: 0.6rem; }
 input {
   flex: 1; min-width: 0; min-height: 3.25rem; padding: 0.5rem 0.85rem;
   border: 0.13rem solid var(--border); border-radius: 0.7rem; background: var(--surface); color: var(--text);
@@ -131,7 +131,7 @@ input:focus-visible, button:focus-visible { outline: 0.19rem solid var(--focus);
   .card { padding-left: calc(1rem + var(--safe-left, 0px)); padding-right: calc(1rem + var(--safe-right, 0px)); }
   .q { font-size: 1.6rem; }
   .q.long { font-size: 1.35rem; }
-  form { flex-direction: column; }
+  .answer { flex-direction: column; }
   .boxes { display: none; }
 }
 </style>
@@ -319,15 +319,22 @@ input:focus-visible, button:focus-visible { outline: 0.19rem solid var(--focus);
     const len = String(q.question || '').length;
     const lead = q.caughtUp ? 'Bonus review' : q.card?.wrong > 0 && q.card?.status === 'learning' ? `Missed before · ${KIND[q.kind] || 'Question'}` : KIND[q.kind] || 'Question';
     const left = q.remaining ? `${q.remaining.due} due · ${q.remaining.new} new` : '';
-    const input = h('input', { id: 'answer', type: 'text', value: state.draft, oninput: e => { state.draft = e.target.value; }, 'aria-label': 'Your answer', placeholder: 'Type your answer', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'done', disabled: state.busy });
+    // No <form>: hosts may sandbox the card without allow-forms, and then a form never submits.
+    // An empty box is not an answer (a stray tap on Check would count as a miss); "I don't know" is.
+    const check = () => { if (input.value.trim()) answer(input.value); };
+    const input = h('input', {
+      id: 'answer', type: 'text', value: state.draft, 'aria-label': 'Your answer', placeholder: 'Type your answer',
+      autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'done', disabled: state.busy,
+      oninput: e => { state.draft = e.target.value; checkButton.disabled = state.busy || !state.draft.trim(); },
+      onkeydown: e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); check(); } },
+    });
+    const checkButton = h('button', { id: 'check', class: 'primary', type: 'button', disabled: state.busy || !state.draft.trim(), onclick: check }, state.busy ? 'Checking…' : 'Check');
     return [
       header(q.page, q.card),
       h('p', { class: 'kicker' }, lead),
       h('h1', { class: `q${len > 220 ? ' xlong' : len > 120 ? ' long' : ''}` }, withBlanks(q.question)),
       state.hint && q.hint && h('p', { class: 'hint' }, `Hint: ${q.hint}`),
-      h('form', { onsubmit: e => { e.preventDefault(); answer(input.value); } },
-        input,
-        h('button', { class: 'primary', type: 'submit', disabled: state.busy }, state.busy ? 'Checking…' : 'Check')),
+      h('div', { class: 'answer', role: 'group', 'aria-label': 'Answer' }, input, checkButton),
       h('div', { class: 'actions' },
         q.hint && !state.hint && h('button', { id: 'hint', class: 'ghost', type: 'button', disabled: state.busy, onclick: hint }, 'Hint'),
         h('button', { id: 'skip', class: 'ghost', type: 'button', disabled: state.busy, onclick: () => answer('') }, 'I don’t know'),
