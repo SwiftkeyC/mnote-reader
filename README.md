@@ -179,6 +179,27 @@ devices. Two prompts, `study_session` and `review_my_mistakes`, start a session 
 show prompts. When a page name in `add_note` fits more than one page, clients that support MCP
 elicitation ask you which page you mean.
 
+### The flashcard on screens (MCP Apps)
+
+On a screen, `quiz_me` and `answer_quiz` also show an interactive flashcard. It's an
+[MCP App](https://github.com/modelcontextprotocol/ext-apps) (the `io.modelcontextprotocol/ui`
+extension), so hosts that support MCP Apps, such as Alexa+ on Echo Show and the MCP Inspector,
+draw it in the conversation. It shows:
+
+- the question with its blank, a **Hint** button, an answer box, and **I don't know**
+- whether you were right, the answer, and the whole highlighted passage, marked as in the
+  reader, with your note
+- when the question comes back, and a **Next question** button
+
+An answer typed on the card goes to `answer_quiz` through the host, so it counts just like a
+spoken one. The card also tells the assistant which question is on screen, so you can switch
+between talking and tapping. The card is one self-contained page, `mcp\src\flashcard.html`,
+served as `ui://mnote/flashcard-<hash>.html`. It loads nothing from the internet and has no
+network access. Its text is sized for Alexa's 768x480 base canvas and grows with the screen, so
+you can read it from across a room, and it follows the host's light or dark theme. Clients
+without MCP Apps get the same text and data as before. To see the card without a host, open
+`mcp\src\flashcard.html` in a browser: it shows a sample question.
+
 ### Run it
 
 You need [Node.js](https://nodejs.org) 20 or later, and this repository: **Code > Download
@@ -222,7 +243,8 @@ powershell -ExecutionPolicy Bypass -File .\mnote.ps1 mcp "$env:TEMP\mnote-demo"
 - **MCP Inspector:** run `npx @modelcontextprotocol/inspector` and open the address it prints.
   Choose **Add Servers > Add manually**, pick the **streamable-http** transport, enter
   `http://127.0.0.1:47880/mcp`, add it, and switch it on. The **Tools** tab then lists the
-  tools. Or call a tool from the command line:
+  tools. The **Apps** tab shows the flashcard: pick **Quiz me**, then **Open App**. Or call a
+  tool from the command line (`--method tools/list --app-info` shows which tools have the card):
 
   ```
   npx @modelcontextprotocol/inspector --cli http://127.0.0.1:47880/mcp --method tools/call --tool-name quiz_me
@@ -294,7 +316,8 @@ also works: they send `Authorization: Bearer <secret>`.
 
 `npm test` in `mcp\` builds the sample library, starts the server, and checks every tool through
 the official MCP client. It also checks the study coach across restarts, sessionless requests,
-the security checks, and the OAuth flow. The tests need Windows, because the sample library is
+the security checks, the OAuth flow, and that the flashcard is listed, linked from the quiz tools,
+and a well-formed page with nothing loaded from outside. The tests need Windows, because the sample library is
 packed by `mnote.ps1`.
 
 ## Install and uninstall

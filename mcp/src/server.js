@@ -89,8 +89,10 @@ function authorize(req) {
   return oauth?.verify(header) || null;
 }
 
-// A service token (OAuth client credentials) may look at the server but not at the notes.
+// A service token (OAuth client credentials) may look at the server, and fetch the flashcard UI
+// (hosts may load ui:// pages ahead of time), but not at the notes.
 const SERVICE_METHODS = new Set(['initialize', 'notifications/initialized', 'ping', 'tools/list', 'prompts/list', 'resources/list', 'resources/templates/list']);
+const serviceOk = m => SERVICE_METHODS.has(m?.method) || (m?.method === 'resources/read' && String(m.params?.uri || '').startsWith('ui://'));
 
 // Browsers send Origin; MCP clients outside a browser don't. A web page from anywhere else must
 // not reach your notes (the spec requires this check against DNS rebinding).
@@ -174,7 +176,7 @@ async function handleMcp(req, res, scopes) {
     try { body = JSON.parse(await readBody(req)); }
     catch (err) { return err.status === 413 ? rpcError(res, 413, -32600, 'Request too large') : rpcError(res, 400, -32700, 'Parse error'); }
     const messages = Array.isArray(body) ? body : [body];
-    if (!scopes.includes('mcp:tools') && messages.some(m => !SERVICE_METHODS.has(m?.method))) {
+    if (!scopes.includes('mcp:tools') && messages.some(m => !serviceOk(m))) {
       return rpcError(res, 403, -32001, 'This token can only list what the server offers. Link your account to use the tools.');
     }
     if (known) return known.transport.handleRequest(req, res, body);

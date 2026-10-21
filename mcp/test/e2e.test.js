@@ -313,3 +313,34 @@ test('OAuth 2.1 for remote clients such as Alexa+: PKCE, refresh, client credent
     assert.equal(denied.status, 403, 'a service token cannot read notes');
   } finally { await stop(remote); }
 });
+
+test('MCP Apps: quiz_me and answer_quiz link the flashcard, a self-contained ui:// page', async () => {
+  const { resources } = await client.listResources();
+  const card = resources.find(r => r.uri.startsWith('ui://mnote/flashcard-'));
+  assert.ok(card, 'the flashcard resource is listed');
+  assert.equal(card.mimeType, 'text/html;profile=mcp-app');
+  const { tools } = await client.listTools();
+  for (const name of ['quiz_me', 'answer_quiz']) {
+    const t = tools.find(x => x.name === name);
+    assert.equal(t._meta?.ui?.resourceUri, card.uri, name);
+    assert.equal(t._meta['ui/resourceUri'], card.uri, `${name} (older hosts)`);
+  }
+  assert.ok(!tools.find(t => t.name === 'read_page')._meta?.ui, 'other tools stay plain');
+  const { contents: [c] } = await client.readResource({ uri: card.uri });
+  assert.equal(c.mimeType, 'text/html;profile=mcp-app');
+  assert.deepEqual(c._meta.ui.csp, { connectDomains: [], resourceDomains: [] });
+  assert.match(c.text, /^<!doctype html>/i);
+  assert.doesNotMatch(c.text, /<script[^>]+src=|<link[^>]+href=|https?:\/\/(?!www\.w3\.org)/i, 'no external scripts, styles or addresses');
+  const { parse } = await import('parse5');
+  const errors = [];
+  parse(c.text, { onParseError: e => errors.push(e.code) });
+  assert.deepEqual(errors, [], 'well-formed HTML');
+  const vm = await import('node:vm');
+  const script = /<script>([\s\S]*?)<\/script>/.exec(c.text)[1];
+  assert.doesNotThrow(() => new vm.Script(script), 'the inline script compiles');
+  for (const m of ['ui/initialize', 'ui/notifications/initialized', 'ui/notifications/tool-result', 'tools/call', 'answer_quiz']) assert.ok(script.includes(m), m);
+  // Text-only clients get the same answers as before, plus the question that was asked.
+  const q = await call(client, 'quiz_me', {});
+  const r = await call(client, 'answer_quiz', { question_id: q.questionId, answer: 'x', next: false });
+  assert.equal(r.question, q.question);
+});

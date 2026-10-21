@@ -211,7 +211,7 @@ export class StudyCoach {
     const id = 'q-' + randomUUID().slice(0, 8);
     // The scope goes with the question, so answer_quiz asks the next one from the same place.
     const keep = Object.fromEntries(Object.entries({ ...scope, focus }).filter(([, v]) => v));
-    s.pending[id] = { card: card.key, path: card.page.path, highlightId: card.h.id, kind: q.kind, answer: q.answer, asked: new Date().toISOString(), scope: keep };
+    s.pending[id] = { card: card.key, path: card.page.path, highlightId: card.h.id, kind: q.kind, question: q.question, answer: q.answer, asked: new Date().toISOString(), scope: keep };
     const ids = Object.keys(s.pending);
     for (const old of ids.slice(0, Math.max(0, ids.length - 30))) delete s.pending[old];
     s.lastCard = card.key;
@@ -280,6 +280,7 @@ export class StudyCoach {
       skipped: !!g.skipped,
       expected: q.answer,
       yourAnswer: String(answer || ''),
+      ...(q.question ? { question: q.question } : {}),
       passage,
       note: h?.note || '',
       page: page ? pageRef(page) : { path: q.path, title: '', notebook: '', section: '', pageNumber: 0 },

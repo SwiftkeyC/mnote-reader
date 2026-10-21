@@ -1,8 +1,10 @@
 // The MCP surface: tools over the library, the study coach, and prompts that run a session.
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import * as z from 'zod';
 import { COLORS } from './annotations.js';
 import { pageRef } from './study.js';
+import { FLASHCARD_URI, registerFlashcard } from './apps.js';
 
 export const SERVER_VERSION = '1.0.0';
 
@@ -14,6 +16,7 @@ const INSTRUCTIONS = `Mnote turns a person's Microsoft OneNote notebooks into fi
 - To find something, use search_notes, then read_page with the "path" it returns. Pages can also be named loosely by title ("the pricing page").
 - list_highlights_and_notes shows what the person marked as important. add_note saves a note on a page, or on a passage (which becomes a highlight), straight into their files; Mnote Reader shows it next time the page is opened.
 - Study coach: quiz_me asks a fill-in-the-blank question made from one of their own highlights. Read the "speech" text to them, wait for their answer, then call answer_quiz with their exact words and the questionId. answer_quiz grades it, schedules the next review (spaced repetition) and returns the next question. Missed questions come back sooner. Progress is saved across conversations; study_progress summarises it.
+- On a screen, quiz_me and answer_quiz also show a flashcard (MCP Apps) where the person can tap for a hint, type an answer and go to the next question. What they do on the card is passed to you as context: if they then answer out loud, use the questionId it names.
 - Answers are spoken or typed by people: keep replies short and friendly, and never reveal the answer before they try. If they say something that means the same as the expected answer but in other words, pass judged_correct: true.`;
 
 const PageRef = z.object({
@@ -62,6 +65,10 @@ export function createMnoteServer({ library, coach, log = () => {} }) {
       return { content: [{ type: 'text', text: err.message }], isError: true };
     }
   });
+
+  // The study tools render as the flashcard on hosts that support MCP Apps.
+  registerFlashcard(server);
+  const cardTool = (name, config, fn) => registerAppTool({ registerTool: tool }, name, { ...config, _meta: { ui: { resourceUri: FLASHCARD_URI } } }, fn);
 
   const findPage = (ref, notebook) => {
     const r = library.resolvePage(ref, { notebook });
@@ -295,7 +302,7 @@ export function createMnoteServer({ library, coach, log = () => {} }) {
     page: z.string().optional().describe('Only this page'),
   };
 
-  tool('quiz_me', {
+  cardTool('quiz_me', {
     title: 'Quiz me',
     description: 'Study coach: the next fill-in-the-blank question made from the person\'s own highlights, chosen by spaced repetition (questions they missed come back first, then reviews that are due, then highlights never quizzed). Read "speech" aloud, then send their reply to answer_quiz.',
     inputSchema: {
@@ -306,7 +313,7 @@ export function createMnoteServer({ library, coach, log = () => {} }) {
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   }, ({ notebook, section, page, focus }) => result(coach.quiz({ notebook, section, page }, focus || 'due')));
 
-  tool('answer_quiz', {
+  cardTool('answer_quiz', {
     title: 'Answer the quiz',
     description: 'Study coach: checks the person\'s answer to a quiz_me question (forgiving about case, plurals, small typos and speech-recognition slips), moves the card along its spaced-repetition schedule, saves the result, and by default returns the next question in "next".',
     inputSchema: {
@@ -321,6 +328,7 @@ export function createMnoteServer({ library, coach, log = () => {} }) {
       skipped: z.boolean(),
       expected: z.string(),
       yourAnswer: z.string(),
+      question: z.string().optional().describe('The question that was asked'),
       passage: z.string().describe('The whole highlighted passage'),
       note: z.string().describe('Their own note on that highlight'),
       page: PageRef,

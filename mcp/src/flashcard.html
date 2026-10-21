@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Mnote flashcard</title>
+<!--
+  The Mnote study coach as an MCP App (io.modelcontextprotocol/ui). The host renders this page in
+  a sandboxed iframe for quiz_me and answer_quiz, sends it the tool result, and passes its
+  answer_quiz / quiz_me calls on to the Mnote MCP server. Self-contained: no network, no storage.
+  Sized for Alexa's 768x480 base canvas (scaled up on Echo Show) and read at arm's length.
+-->
+<style>
+:root {
+  --bg: var(--color-background-primary, #fbfaf7);
+  --surface: var(--color-background-secondary, #ffffff);
+  --text: var(--color-text-primary, #1d1b20);
+  --muted: var(--color-text-secondary, #5d5866);
+  --border: var(--color-border-primary, #d9d4df);
+  --accent: #6d3fc0; --accent-ink: #ffffff; --accent-soft: #efe8fb;
+  --ok: #17703a; --ok-bg: #e5f4ea;
+  --bad: #b3261e; --bad-bg: #fcebea;
+  --mark: #fff0a0; --mark-ink: #1d1b20;
+  --focus: #2f6fdf;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: var(--color-background-primary, #16141a);
+    --surface: var(--color-background-secondary, #211e27);
+    --text: var(--color-text-primary, #f2eff6);
+    --muted: var(--color-text-secondary, #bdb6c8);
+    --border: var(--color-border-primary, #3d3846);
+    --accent: #b597ff; --accent-ink: #1b1029; --accent-soft: #2d2440;
+    --ok: #6fdc8c; --ok-bg: #143221;
+    --bad: #ff9a8f; --bad-bg: #3b1915;
+    --mark: #5a4800; --mark-ink: #fff4c2;
+    --focus: #8ab4ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: var(--color-background-primary, #16141a);
+  --surface: var(--color-background-secondary, #211e27);
+  --text: var(--color-text-primary, #f2eff6);
+  --muted: var(--color-text-secondary, #bdb6c8);
+  --border: var(--color-border-primary, #3d3846);
+  --accent: #b597ff; --accent-ink: #1b1029; --accent-soft: #2d2440;
+  --ok: #6fdc8c; --ok-bg: #143221;
+  --bad: #ff9a8f; --bad-bg: #3b1915;
+  --mark: #5a4800; --mark-ink: #fff4c2;
+  --focus: #8ab4ff;
+  color-scheme: dark;
+}
+
+/* 16px at the 768px base canvas; the type grows with the screen, so it reads from across a room. */
+html { font-size: clamp(15px, calc(100vw / 48), 32px); -webkit-text-size-adjust: 100%; }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 400 1rem/1.4 var(--font-sans, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+}
+:root.fill body { min-height: 100vh; display: flex; }
+.card {
+  display: flex; flex-direction: column; gap: 0.85rem;
+  width: 100%; max-width: 60rem; margin: 0 auto;
+  padding: calc(1.2rem + var(--safe-top, 0px)) calc(1.5rem + var(--safe-right, 0px)) calc(1.35rem + var(--safe-bottom, 0px)) calc(1.5rem + var(--safe-left, 0px));
+}
+:root.fill .card { justify-content: center; }
+
+.top { display: flex; align-items: center; gap: 0.6rem; min-height: 1.75rem; color: var(--muted); font-size: 0.95rem; }
+.top svg { width: 1.45rem; height: 1.45rem; flex: none; }
+.where { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.where b { color: var(--text); font-weight: 600; }
+.boxes { display: flex; gap: 0.25rem; flex: none; }
+.boxes i { width: 0.65rem; height: 0.65rem; border-radius: 50%; border: 0.12rem solid var(--accent); }
+.boxes i.on { background: var(--accent); }
+.chip { flex: none; padding: 0.15rem 0.65rem; border-radius: 999px; background: var(--accent-soft); color: var(--text); font-size: 0.9rem; font-weight: 600; }
+
+.kicker { margin: 0; color: var(--accent); font-size: 0.95rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.q { margin: 0; font-size: 1.9rem; line-height: 1.28; font-weight: 600; overflow-wrap: anywhere; text-wrap: pretty; }
+.q.long { font-size: 1.5rem; }
+.q.xlong { font-size: 1.22rem; font-weight: 500; }
+.q.quiet { font-size: 1.45rem; font-weight: 500; }
+.nowrap { white-space: nowrap; }
+.blank { display: inline-block; width: 4.2em; height: 0.95em; margin: 0 0.12em; vertical-align: -0.12em; border-bottom: 0.13em solid var(--accent); }
+.hint { margin: 0; padding: 0.5rem 0.85rem; border-radius: 0.6rem; background: var(--accent-soft); font-size: 1.2rem; }
+
+form { display: flex; gap: 0.6rem; }
+input {
+  flex: 1; min-width: 0; min-height: 3.25rem; padding: 0.5rem 0.85rem;
+  border: 0.13rem solid var(--border); border-radius: 0.7rem; background: var(--surface); color: var(--text);
+  font: inherit; font-size: 1.35rem;
+}
+input::placeholder { color: var(--muted); opacity: 1; }
+button {
+  min-height: max(3rem, 48px); min-width: max(3rem, 48px); padding: 0.45rem 1.15rem;
+  border: 0.13rem solid transparent; border-radius: 0.7rem; cursor: pointer;
+  font: inherit; font-size: 1.12rem; font-weight: 600;
+}
+.primary { background: var(--accent); color: var(--accent-ink); }
+.ghost { background: transparent; color: var(--text); border-color: var(--border); }
+.link { align-self: flex-start; min-height: 48px; padding: 0.3rem 0; background: none; color: var(--accent); text-decoration: underline; text-underline-offset: 0.2em; }
+button:disabled, input:disabled { opacity: 0.6; cursor: default; }
+input:focus-visible, button:focus-visible { outline: 0.19rem solid var(--focus); outline-offset: 0.12rem; }
+.actions, .foot { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.meta { color: var(--muted); font-size: 0.95rem; }
+.actions .meta { margin-left: auto; }
+.foot .meta { flex: 1; min-width: 12rem; }
+
+.verdict { display: flex; align-items: center; gap: 0.6rem; margin: 0; padding: 0.45rem 0.9rem; border-radius: 0.8rem; font-size: 1.7rem; font-weight: 700; }
+.verdict svg { width: 1.15em; height: 1.15em; flex: none; }
+.verdict.ok { color: var(--ok); background: var(--ok-bg); }
+.verdict.bad { color: var(--bad); background: var(--bad-bg); }
+.verdict.skip { color: var(--text); background: var(--accent-soft); }
+.verdict.ok svg path { stroke: var(--ok-bg); }
+.verdict.bad svg path { stroke: var(--bad-bg); }
+.verdict.skip svg path { stroke: var(--accent-soft); }
+.said { margin: 0; font-size: 1.2rem; }
+.said strong { font-weight: 700; }
+.passage { margin: 0; padding: 0.15rem 0 0.15rem 0.95rem; border-left: 0.3rem solid var(--accent); font-size: 1.3rem; line-height: 1.5; overflow-wrap: anywhere; }
+.passage.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
+.passage mark { padding: 0.05em 0.15em; border-radius: 0.2em; background: var(--mark); color: var(--mark-ink); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.passage strong { text-decoration: underline; text-decoration-thickness: 0.1em; text-underline-offset: 0.16em; }
+.note { margin: 0; color: var(--muted); font-size: 1.08rem; font-style: italic; }
+.wait { margin: 0; color: var(--muted); font-size: 1.3rem; }
+.error { margin: 0; font-size: 1.3rem; }
+
+@media (max-width: 520px) {
+  .card { padding-left: calc(1rem + var(--safe-left, 0px)); padding-right: calc(1rem + var(--safe-right, 0px)); }
+  .q { font-size: 1.6rem; }
+  .q.long { font-size: 1.35rem; }
+  form { flex-direction: column; }
+  .boxes { display: none; }
+}
+</style>
+</head>
+<body>
+<main id="app" class="card"><p class="wait">Getting your question&hellip;</p></main>
+
+<template id="icon-logo"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="2" width="22" height="28" rx="4" fill="#6d3fc0"/><path d="M10 10h12M10 16h12M10 22h7" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg></template>
+<template id="icon-ok"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M6.8 12.4l3.4 3.4 7-7.2" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></template>
+<template id="icon-bad"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M8.2 8.2l7.6 7.6M15.8 8.2l-7.6 7.6" fill="none" stroke-width="2.6" stroke-linecap="round"/></svg></template>
+<template id="icon-skip"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M12 7.2v6.1M12 16.9v.1" fill="none" stroke-width="2.8" stroke-linecap="round"/></svg></template>
+
+<script>
+'use strict';
+(() => {
+  const BLANK = '_____';
+  const PROTOCOL_VERSION = '2026-01-26';
+  const root = document.documentElement;
+  const app = document.getElementById('app');
+  // Opened on its own (not inside an MCP host): show a fictional sample card, for previews.
+  const standalone = window.parent === window;
+
+  // ------------------------------------------------------------ MCP Apps bridge
+  // JSON-RPC 2.0 over postMessage with the host (the iframe's parent), as the MCP Apps spec says.
+  const bridge = (() => {
+    let seq = 0;
+    const waiting = new Map(), handlers = new Map();
+    const post = msg => window.parent.postMessage(msg, '*');
+    window.addEventListener('message', e => {
+      if (e.source !== window.parent) return;
+      const m = e.data;
+      if (!m || typeof m !== 'object' || m.jsonrpc !== '2.0') return;
+      if (!m.method) {
+        const w = waiting.get(m.id);
+        if (!w) return;
+        waiting.delete(m.id);
+        if (m.error) w.reject(new Error(m.error.message || 'The host refused the request.'));
+        else w.resolve(m.result);
+        return;
+      }
+      const fn = handlers.get(m.method);
+      if (m.id === undefined || m.id === null) { if (fn) fn(m.params || {}); return; }
+      Promise.resolve()
+        .then(() => { if (!fn) throw Object.assign(new Error(`Method not found: ${m.method}`), { code: -32601 }); return fn(m.params || {}); })
+        .then(result => post({ jsonrpc: '2.0', id: m.id, result: result || {} }),
+          err => post({ jsonrpc: '2.0', id: m.id, error: { code: err.code || -32603, message: err.message || String(err) } }));
+    });
+    return {
+      on: (method, fn) => handlers.set(method, fn),
+      notify: (method, params) => post(params ? { jsonrpc: '2.0', method, params } : { jsonrpc: '2.0', method }),
+      request: (method, params, ms = 60000) => new Promise((resolve, reject) => {
+        const id = ++seq;
+        const timer = setTimeout(() => { waiting.delete(id); reject(new Error('The app showing this card did not answer in time.')); }, ms);
+        waiting.set(id, { resolve: v => { clearTimeout(timer); resolve(v); }, reject: e => { clearTimeout(timer); reject(e); } });
+        post({ jsonrpc: '2.0', id, method, params });
+      }),
+    };
+  })();
+
+  // ------------------------------------------------------------ state
+  const state = {
+    host: {}, ctx: {},
+    scope: {},         // quiz_me's notebook / section / page / focus, so new questions come from the same place
+    question: null,    // a quiz_me result (or answer_quiz's "next") on screen
+    result: null,      // an answer_quiz result on screen
+    asked: null,       // the question that result answers
+    last: null,        // the last answer given on the card, to tell the model
+    draft: '',         // what is typed in the answer box, kept when the card redraws
+    hint: false, expanded: false, busy: false, error: '',
+  };
+
+  const textOf = res => (res?.content || []).find(c => c.type === 'text')?.text || '';
+  function payload(res) {
+    if (res?.structuredContent) return res.structuredContent;
+    try { return JSON.parse(textOf(res)); } catch { return null; }
+  }
+
+  async function callTool(name, args) {
+    const res = await (standalone ? sample(name, args) : bridge.request('tools/call', { name, arguments: args }));
+    if (res?.isError) throw new Error(textOf(res) || 'Mnote could not do that.');
+    const data = payload(res);
+    if (!data) throw new Error('The answer from Mnote could not be read.');
+    return data;
+  }
+
+  /** Puts a quiz_me or answer_quiz result on the card. */
+  function show(data) {
+    Object.assign(state, { error: '', draft: '', hint: false, expanded: false });
+    if (data && 'correct' in data) { state.result = data; state.question = null; }
+    else { state.question = data; state.result = null; }
+    render();
+  }
+  function fail(message) { Object.assign(state, { busy: false, error: message }); render(); }
+
+  // ------------------------------------------------------------ actions
+  async function answer(text) {
+    const q = state.question;
+    if (!q?.questionId || state.busy) return;
+    state.busy = true; render();
+    let r;
+    try { r = await callTool('answer_quiz', { question_id: q.questionId, answer: text }); } catch (err) { return fail(err.message); }
+    state.busy = false; state.asked = q;
+    state.last = { id: q.questionId, answer: text, correct: r.correct, skipped: r.skipped, expected: r.expected };
+    show(r);
+    tellModel();
+    focus('next');
+  }
+
+  async function next() {
+    const n = state.result?.next;
+    if (n?.available) { show(n); tellModel(); focus('answer'); return; }
+    if (state.busy) return;
+    state.busy = true; render();
+    let q;
+    try { q = await callTool('quiz_me', state.scope); } catch (err) { return fail(err.message); }
+    state.busy = false;
+    show(q); tellModel(); focus('answer');
+  }
+
+  function hint() { state.hint = true; render(); tellModel(); focus('answer'); }
+
+  // The model only sees tool calls it made itself, so say what happened on the card: then a spoken
+  // answer goes to the question that is on screen. Each update replaces the previous one.
+  function tellModel() {
+    if (standalone || !state.host.updateModelContext) return;
+    const parts = ['Mnote flashcard: the person is using the card on screen.'];
+    const l = state.last;
+    if (l) parts.push(l.skipped ? `They skipped question ${l.id}; the answer was "${l.expected}".` : `They answered question ${l.id} with "${l.answer}" and were ${l.correct ? 'right' : 'wrong'}; the answer is "${l.expected}".`);
+    const q = state.question?.available ? state.question : null;
+    const pending = q || (state.result?.next?.available ? state.result.next : null);
+    if (pending) {
+      parts.push(`${q ? 'The card now shows' : 'The next question on the card is'} question ${pending.questionId}: "${pending.question}".`);
+      if (q && state.hint) parts.push('They have seen its hint.');
+      parts.push(`If they answer it out loud, call answer_quiz with question_id "${pending.questionId}" instead of asking a new question.`);
+    }
+    bridge.request('ui/update-model-context', { content: [{ type: 'text', text: parts.join(' ') }] }).catch(() => {});
+  }
+
+  function focus(id) {
+    // On a touch-only screen (Echo Show) focusing the text box would pop up the keyboard.
+    const d = state.ctx.deviceCapabilities;
+    if (id === 'answer' && d?.touch && !d?.hover) return;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(id);
+      el?.focus();
+      if (el?.setSelectionRange) el.setSelectionRange(el.value.length, el.value.length);
+    });
+  }
+
+  // ------------------------------------------------------------ views
+  function h(tag, props, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (v == null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? '' : String(v));
+    }
+    for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) el.append(kid);
+    return el;
+  }
+  const icon = name => document.getElementById(`icon-${name}`).content.firstElementChild.cloneNode(true);
+
+  const STATUS = { new: 'New', learning: 'Learning', reviewing: 'Reviewing', mastered: 'Mastered' };
+  const KIND = { term: 'Name the term', cloze: 'Fill in the blank', recall: 'Recall the passage' };
+
+  function header(page, card) {
+    const box = Math.max(0, Math.min(5, Number(card?.box) || 0));
+    return h('header', { class: 'top' },
+      icon('logo'),
+      h('span', { class: 'where' }, page?.title ? [page.notebook, ' › ', h('b', {}, page.title)] : 'Mnote study coach'),
+      standalone && h('span', { class: 'chip' }, 'Preview'),
+      card && h('span', { class: 'boxes', role: 'img', 'aria-label': `Box ${box} of 5` }, [0, 1, 2, 3, 4].map(i => h('i', { class: i < box ? 'on' : null }))),
+      card && h('span', { class: 'chip' }, STATUS[card.status] || card.status));
+  }
+
+  /** Question text with each _____ drawn as a blank line, kept on one line with the punctuation after it. */
+  const withBlanks = text => String(text).split(BLANK).flatMap((part, i) => {
+    if (!i) return [part];
+    const [, stick, rest] = /^([^\s\p{L}\p{N}]*)([\s\S]*)$/u.exec(part);
+    return [h('span', { class: 'nowrap' }, h('span', { class: 'blank', role: 'img', 'aria-label': 'blank' }), stick), rest];
+  });
+
+  function questionView(q) {
+    const len = String(q.question || '').length;
+    const lead = q.caughtUp ? 'Bonus review' : q.card?.wrong > 0 && q.card?.status === 'learning' ? `Missed before · ${KIND[q.kind] || 'Question'}` : KIND[q.kind] || 'Question';
+    const left = q.remaining ? `${q.remaining.due} due · ${q.remaining.new} new` : '';
+    const input = h('input', { id: 'answer', type: 'text', value: state.draft, oninput: e => { state.draft = e.target.value; }, 'aria-label': 'Your answer', placeholder: 'Type your answer', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'done', disabled: state.busy });
+    return [
+      header(q.page, q.card),
+      h('p', { class: 'kicker' }, lead),
+      h('h1', { class: `q${len > 220 ? ' xlong' : len > 120 ? ' long' : ''}` }, withBlanks(q.question)),
+      state.hint && q.hint && h('p', { class: 'hint' }, `Hint: ${q.hint}`),
+      h('form', { onsubmit: e => { e.preventDefault(); answer(input.value); } },
+        input,
+        h('button', { class: 'primary', type: 'submit', disabled: state.busy }, state.busy ? 'Checking…' : 'Check')),
+      h('div', { class: 'actions' },
+        q.hint && !state.hint && h('button', { id: 'hint', class: 'ghost', type: 'button', disabled: state.busy, onclick: hint }, 'Hint'),
+        h('button', { id: 'skip', class: 'ghost', type: 'button', disabled: state.busy, onclick: () => answer('') }, 'I don’t know'),
+        left && h('span', { class: 'meta' }, left)),
+    ];
+  }
+
+  function emphasize(text, word) {
+    if (!word || word.length >= text.length) return [text];
+    const esc = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return text.split(new RegExp(`(?<![\\p{L}\\p{N}])(${esc})(?![\\p{L}\\p{N}])`, 'iu')).map((s, i) => (i % 2 ? h('strong', {}, s) : s));
+  }
+  const same = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+
+  /** The highlighted passage, marked as in Mnote Reader, with the answer underlined. */
+  function passageView(r) {
+    const asked = r.question || (state.asked?.questionId && state.asked.question) || '';
+    let kids;
+    if (asked.includes(BLANK) && r.passage && same(r.passage, r.expected)) {
+      // The highlight is the term itself: show it in its line, the way it sits on the page.
+      kids = asked.split(BLANK).flatMap((part, i) => (i ? [h('mark', {}, r.expected), part] : [part]));
+    } else if (r.passage) kids = [h('mark', {}, emphasize(r.passage, r.expected))];
+    else return null;
+    return h('blockquote', { id: 'passage', class: state.expanded ? 'passage' : 'passage clamp' }, kids);
+  }
+
+  function reviewText(r) {
+    if (!r.correct) return 'It comes back in a few minutes';
+    const days = Math.max(1, Math.round((Date.parse(r.card?.nextReview) - Date.now()) / 864e5) || 1);
+    return `Next review in ${days} day${days === 1 ? '' : 's'}`;
+  }
+
+  function resultView(r) {
+    const kind = r.correct ? 'ok' : r.skipped ? 'skip' : 'bad';
+    const title = r.correct ? (r.close ? 'Close enough!' : 'Correct!') : r.skipped ? 'Here’s the answer' : 'Not quite';
+    const today = r.today ? ` · Today: ${r.today.right} right, ${r.today.wrong} wrong` : '';
+    const more = r.next?.available ? 'Next question' : 'Another question';
+    return [
+      header(r.page, r.card),
+      h('p', { class: `verdict ${kind}`, role: 'status' }, icon(kind), title),
+      h('p', { class: 'said' }, 'Answer: ', h('strong', {}, r.expected),
+        !r.skipped && (!r.correct || r.close) && [' · You said: “', r.yourAnswer, '”']),
+      passageView(r),
+      r.note?.trim() && h('p', { class: 'note' }, `Your note: ${r.note.trim()}`),
+      h('div', { class: 'foot' },
+        h('span', { class: 'meta' }, reviewText(r) + today),
+        h('button', { id: 'next', class: 'primary', type: 'button', disabled: state.busy, onclick: next }, state.busy ? 'Loading…' : `${more} →`)),
+    ];
+  }
+
+  function emptyView(q) {
+    return [header(null, null), h('h1', { class: 'q quiet' }, q.speech || 'There is nothing to quiz you on yet.')];
+  }
+
+  function errorView() {
+    return [
+      header(state.question?.page || state.result?.page, null),
+      h('p', { class: 'error', role: 'alert' }, state.error),
+      h('div', { class: 'actions' }, h('button', { id: 'next', class: 'primary', type: 'button', disabled: state.busy, onclick: () => { state.result = null; next(); } }, 'New question')),
+    ];
+  }
+
+  function render() {
+    let view;
+    if (state.error) view = errorView();
+    else if (state.result) view = resultView(state.result);
+    else if (state.question?.available) view = questionView(state.question);
+    else if (state.question) view = emptyView(state.question);
+    else view = [h('p', { class: 'wait' }, 'Getting your question…')];
+    app.replaceChildren(...view.flat().filter(Boolean));
+    const p = document.getElementById('passage');
+    if (p && !state.expanded && p.scrollHeight > p.clientHeight + 2) {
+      p.after(h('button', { class: 'link', type: 'button', onclick: () => { state.expanded = true; render(); } }, 'Show the whole passage'));
+    }
+  }
+
+  // ------------------------------------------------------------ host context and size
+  function applyContext(ctx) {
+    Object.assign(state.ctx, ctx);
+    const c = state.ctx;
+    if (c.theme === 'light' || c.theme === 'dark') root.dataset.theme = c.theme;
+    for (const [k, v] of Object.entries(c.styles?.variables || {})) if (k.startsWith('--') && v) root.style.setProperty(k, v);
+    if (c.styles?.css?.fonts && !document.getElementById('host-fonts')) document.head.append(h('style', { id: 'host-fonts' }, c.styles.css.fonts));
+    if (c.displayMode) root.dataset.mode = c.displayMode;
+    if (c.deviceClass) root.dataset.device = String(c.deviceClass);
+    // A container with a fixed height (Alexa's device canvas): fill it and centre the card.
+    root.classList.toggle('fill', !!(c.containerDimensions && 'height' in c.containerDimensions));
+    const s = c.safeAreaInsets;
+    if (s) for (const side of ['top', 'right', 'bottom', 'left']) root.style.setProperty(`--safe-${side}`, `${Number(s[side]) || 0}px`);
+  }
+
+  // Tell the host how tall the card is, so an inline frame fits it without scrolling.
+  let last = { w: 0, h: 0 }, queued = false;
+  function reportSize() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      const prev = root.style.height;
+      root.style.height = 'max-content';
+      const height = Math.ceil(root.getBoundingClientRect().height);
+      root.style.height = prev;
+      const width = Math.ceil(window.innerWidth);
+      if (width === last.w && height === last.h) return;
+      last = { w: width, h: height };
+      bridge.notify('ui/notifications/size-changed', { width, height });
+    });
+  }
+
+  // ------------------------------------------------------------ start
+  bridge.on('ui/notifications/tool-input', p => {
+    const a = p.arguments || {};
+    if (!('question_id' in a)) state.scope = Object.fromEntries(['notebook', 'section', 'page', 'focus'].filter(k => a[k]).map(k => [k, a[k]]));
+  });
+  bridge.on('ui/notifications/tool-result', p => {
+    if (p.isError) return fail(textOf(p) || 'Mnote could not do that.');
+    const data = payload(p);
+    if (data) show(data);
+  });
+  bridge.on('ui/notifications/tool-cancelled', () => { if (!state.question && !state.result) fail('The question was cancelled.'); });
+  bridge.on('ui/notifications/host-context-changed', applyContext);
+  bridge.on('ui/resource-teardown', () => ({}));
+  bridge.on('ping', () => ({}));
+
+  async function start() {
+    if (standalone) {
+      const theme = /\b(dark|light)\b/.exec(location.hash)?.[1];
+      if (theme) root.dataset.theme = theme;
+      root.classList.add('fill');
+      return show(SAMPLE_QUESTION);
+    }
+    if (typeof ResizeObserver === 'function') new ResizeObserver(reportSize).observe(document.body);
+    reportSize();
+    try {
+      const init = await bridge.request('ui/initialize', {
+        protocolVersion: PROTOCOL_VERSION,
+        appInfo: { name: 'mnote-flashcard', version: '1.0.0' },
+        appCapabilities: { availableDisplayModes: ['inline', 'fullscreen'] },
+      });
+      state.host = init?.hostCapabilities || {};
+      applyContext(init?.hostContext || {});
+      bridge.notify('ui/notifications/initialized');
+    } catch (err) {
+      fail(`This card could not connect to the app showing it. ${err.message}`);
+    }
+  }
+
+  // ------------------------------------------------------------ preview (opened on its own)
+  const SAMPLE_PAGE = { path: 'sample', title: 'Pricing models', notebook: 'Study notebook', section: 'Cloud basics', pageNumber: 6 };
+  const SAMPLE_QUESTION = {
+    available: true, questionId: 'q-sample', kind: 'term', question: `${BLANK}: spare capacity at a big discount, can be taken back`,
+    hint: 'starts with "S", 4 letters', speech: '', page: SAMPLE_PAGE, card: { status: 'new', box: 0, right: 0, wrong: 0 }, remaining: { due: 0, new: 13 }, caughtUp: false,
+  };
+  function sample(name, args) {
+    if (name === 'quiz_me') return Promise.resolve({ structuredContent: SAMPLE_QUESTION });
+    const said = String(args.answer || '');
+    const correct = /^\s*spots?\s*$/i.test(said), skipped = !said.trim();
+    return Promise.resolve({ structuredContent: {
+      correct, close: false, skipped, expected: 'Spot', yourAnswer: said, question: SAMPLE_QUESTION.question, passage: 'Spot',
+      note: 'Cheapest, but it can be taken back.', page: SAMPLE_PAGE,
+      card: { status: 'learning', box: 1, right: correct ? 1 : 0, wrong: correct ? 0 : 1, nextReview: new Date(Date.now() + (correct ? 864e5 : 18e4)).toISOString() },
+      today: { right: correct ? 1 : 0, wrong: correct ? 0 : 1 }, speech: '', next: SAMPLE_QUESTION,
+    } });
+  }
+
+  start();
+})();
+</script>
+</body>
+</html>
