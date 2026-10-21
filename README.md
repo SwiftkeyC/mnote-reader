@@ -200,6 +200,48 @@ you can read it from across a room, and it follows the host's light or dark them
 without MCP Apps get the same text and data as before. To see the card without a host, open
 `mcp\src\flashcard.html` in a browser: it shows a sample question.
 
+### Try it on an Alexa-like screen (simulator)
+
+Amazon's own testing tools for Alexa+ add-ons, including the Local Inspector, are only available
+to developers in the Alexa+ private preview. `mcp\sim\` is a stand-in you can run on any PC. It's
+a simulated Alexa+ host, not Amazon software. It shows the flashcard on an Echo Show-sized screen
+and lets you talk to "Alexa" by typing, with buttons, or with your microphone.
+
+```
+powershell -ExecutionPolicy Bypass -File .\mcp\sample\make-sample-library.ps1
+powershell -ExecutionPolicy Bypass -File .\mnote.ps1 mcp "$env:TEMP\mnote-demo"
+```
+
+Then, in a second window:
+
+```
+cd mcp
+npm install
+npm run sim
+```
+
+Open `http://127.0.0.1:47890/` and say "Quiz me". Answer by touching the card or by saying the
+answer, and switch between the two as you like.
+
+What's real and what's simulated:
+
+- **Real:** the Mnote MCP server and its tools, and the flashcard. The card is run through the
+  official MCP Apps host bridge (`AppBridge` from `@modelcontextprotocol/ext-apps`), the way
+  Amazon's docs say Alexa+ runs it: in a sandboxed iframe with no access to the page around it,
+  with the card's content security policy enforced, on a touch screen, in a fixed device canvas.
+  Like Alexa+, the host takes the card's `ui/update-model-context` messages, so a spoken answer
+  goes to the question on screen. The **What the card told Alexa** and **MCP traffic** panels
+  show these messages.
+- **Simulated:** Alexa's language model. A few phrases ("quiz me", "quiz me on economics",
+  "give me a hint", "how am I doing?", "stop") are matched by simple rules, and anything else
+  counts as your answer. Speech uses your browser's speech features: the **Mic** button uses its
+  speech recognition, which may send your voice to the browser maker's speech service. The device
+  sizes follow Amazon's Alexa+ design guide: a 768x480 canvas scaled 1.667 times for Echo Show 8
+  and 15, plus Echo Show 5, a phone, and the web.
+
+`npm run sim -- --port 48001 --server http://127.0.0.1:48000/mcp` uses other ports. The simulator
+only listens on this PC.
+
 ### Run it
 
 You need [Node.js](https://nodejs.org) 20 or later, and this repository: **Code > Download
@@ -317,8 +359,10 @@ also works: they send `Authorization: Bearer <secret>`.
 `npm test` in `mcp\` builds the sample library, starts the server, and checks every tool through
 the official MCP client. It also checks the study coach across restarts, sessionless requests,
 the security checks, the OAuth flow, and that the flashcard is listed, linked from the quiz tools,
-and a well-formed page with nothing loaded from outside. The tests need Windows, because the sample library is
-packed by `mnote.ps1`.
+and a well-formed page with nothing loaded from outside, and that the simulator builds. Run
+`npm install` first (not `npm ci --omit=dev`), because the simulator's build tool is a
+development package. The tests need Windows, because the sample library is packed by
+`mnote.ps1`.
 
 ## Install and uninstall
 

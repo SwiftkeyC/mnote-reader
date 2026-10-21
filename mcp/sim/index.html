@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mnote on an Alexa-like screen (simulator)</title>
+<style>
+:root { --bg: #f3f2f6; --panel: #ffffff; --text: #1d1b20; --muted: #5d5866; --border: #d9d4df; --accent: #6d3fc0; --accent-ink: #fff; --you: #e9e3f7; --ok: #17703a; --bad: #b3261e; color-scheme: light; }
+:root[data-theme="dark"] { --bg: #0e0d11; --panel: #1b1920; --text: #f2eff6; --muted: #bdb6c8; --border: #36323e; --accent: #b597ff; --accent-ink: #1b1029; --you: #2d2440; --ok: #6fdc8c; --bad: #ff9a8f; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--panel); }
+header h1 { margin: 0; font-size: 17px; }
+header .sim { padding: 2px 8px; border-radius: 999px; background: var(--you); font-size: 12px; font-weight: 600; }
+#status { flex: 1 1 260px; color: var(--muted); font-size: 13px; }
+#status.ok { color: var(--ok); } #status.bad { color: var(--bad); }
+select, button, input { font: inherit; color: inherit; }
+select, input[type=text] { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+button { padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+main { display: grid; grid-template-columns: auto minmax(320px, 1fr); gap: 18px; padding: 18px; align-items: start; }
+@media (max-width: 999px) { main { grid-template-columns: 1fr; } }
+.device p { margin: 8px 2px 0; color: var(--muted); font-size: 13px; }
+.bezel { padding: 10px; border-radius: 22px; background: #050505; box-shadow: 0 6px 24px rgb(0 0 0 / .25); width: max-content; }
+.screen { overflow: hidden; border-radius: 10px; background: #000; }
+#frame { transform-origin: 0 0; }
+#frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+.talk { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.panel { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+#chat { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+#chat li { max-width: 92%; padding: 8px 12px; border-radius: 12px; background: var(--bg); }
+#chat li.you { align-self: flex-end; background: var(--you); }
+#chat li b { display: block; font-size: 12px; color: var(--muted); }
+#chat:empty::before { content: 'Say "quiz me" (type it, use a button, or the microphone) to start.'; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+#say { display: flex; gap: 8px; }
+#say input { flex: 1; min-width: 0; }
+#mic.on { background: var(--bad); color: #fff; }
+details summary { cursor: pointer; font-weight: 600; }
+#context { white-space: pre-wrap; margin: 8px 0 0; font: 12.5px/1.45 ui-monospace, Consolas, monospace; color: var(--muted); }
+#log { margin: 8px 0 0; padding-left: 18px; max-height: 260px; overflow: auto; font: 12px/1.4 ui-monospace, Consolas, monospace; }
+footer { padding: 0 18px 18px; color: var(--muted); font-size: 13px; max-width: 1100px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Mnote on an Alexa-like screen</h1><span class="sim">Simulator</span>
+  <label>Device <select id="device"></select></label>
+  <button id="theme" type="button">Light theme</button>
+  <label><input id="voice" type="checkbox"> Speak replies</label>
+  <span id="status">Connecting&hellip;</span>
+</header>
+<main>
+  <section class="device">
+    <div class="bezel"><div class="screen"><div id="frame"></div></div></div>
+    <p><span id="device-label"></span>. Touch the card, or talk to Alexa.</p>
+  </section>
+  <section class="talk">
+    <div class="panel"><ol id="chat"></ol></div>
+    <div class="chips">
+      <button type="button" data-say="Quiz me">"Quiz me"</button>
+      <button type="button" data-say="Quiz me on economics">"Quiz me on economics"</button>
+      <button type="button" data-say="Give me a hint">"Give me a hint"</button>
+      <button type="button" data-say="How am I doing?">"How am I doing?"</button>
+    </div>
+    <form id="say">
+      <input id="words" type="text" autocomplete="off" placeholder="Say something to Alexa, for example your answer" aria-label="Say something to Alexa">
+      <button class="primary" type="submit">Say</button>
+      <button id="mic" type="button" title="Speak (uses your browser's speech recognition)">Mic</button>
+    </form>
+    <details class="panel" open><summary>What the card told Alexa (ui/update-model-context)</summary><pre id="context">(nothing yet)</pre></details>
+    <details class="panel"><summary>MCP traffic</summary><ol id="log" reversed></ol></details>
+  </section>
+</main>
+<footer>
+  A simulation for demos, not Amazon's software. <b>Real:</b> the Mnote MCP server and its tools, the
+  MCP Apps bridge (AppBridge from @modelcontextprotocol/ext-apps), and the flashcard, run in a sandboxed
+  iframe with its content security policy enforced. <b>Simulated:</b> Alexa's model (a few phrases are
+  matched by rules; anything else is taken as your answer), speech (your browser's speech features),
+  and the device sizes, which follow Amazon's Alexa+ design guide.
+</footer>
+<script type="module" src="sim.js"></script>
+</body>
+</html>
