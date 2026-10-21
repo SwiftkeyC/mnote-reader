@@ -15,6 +15,7 @@
   "scripts": {
     "start": "node src/server.js",
     "demo": "node sim/demo.js",
+    "demo:check": "node sim/check-demo.mjs",
     "sim": "node sim/serve.js",
     "test": "node --test"
   },

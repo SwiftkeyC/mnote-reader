@@ -13,19 +13,19 @@ import { fileURLToPath } from 'node:url';
 const mcp = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { values } = parseArgs({
   options: {
-    fresh: { type: 'boolean' }, 'no-open': { type: 'boolean' },
+    fresh: { type: 'boolean' }, 'no-open': { type: 'boolean' }, library: { type: 'string' },
     port: { type: 'string' }, 'sim-port': { type: 'string' }, help: { type: 'boolean', short: 'h' },
   },
 });
 if (values.help) {
-  console.log('npm run demo -- [--fresh] [--no-open] [--port 47885] [--sim-port 47890]');
+  console.log('npm run demo -- [--fresh] [--no-open] [--library <folder>] [--port 47885] [--sim-port 47890]');
   console.log('  --fresh     start again from the original sample notes (forgets study progress)');
   console.log('  --no-open   do not open the browser');
   process.exit(0);
 }
 
 // The server saves notes and study progress into its library, so it works on a copy.
-const library = path.join(os.tmpdir(), 'mnote-sample-library');
+const library = path.resolve(values.library || path.join(os.tmpdir(), 'mnote-sample-library'));
 if (values.fresh) fs.rmSync(library, { recursive: true, force: true });
 if (!fs.existsSync(path.join(library, 'library.json'))) fs.cpSync(path.join(mcp, 'sample', 'library'), library, { recursive: true });
 

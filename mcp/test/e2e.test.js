@@ -1,5 +1,6 @@
 // End to end: builds the fictional sample library, starts the server, and talks to it with the
-// official MCP client over Streamable HTTP. Needs Windows (the sample is packed by mnote.ps1).
+// official MCP client over Streamable HTTP. On Windows the sample is packed by mnote.ps1; on
+// macOS and Linux the tests use the copy committed in mcp/sample/library.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
@@ -18,6 +19,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..', '..');
 const lib = path.join(os.tmpdir(), `mnote-mcp-e2e-${process.pid}`);
 const ps = (...args) => execFileSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ...args], { encoding: 'utf8' });
+const windows = process.platform === 'win32';
 
 function startServer(extra = []) {
   return new Promise((resolve, reject) => {
@@ -66,7 +68,8 @@ function pageEntries(notebookFile, inner) {
 
 let server, client;
 before(async () => {
-  ps(path.join(repo, 'mcp', 'sample', 'make-sample-library.ps1'), '-Out', lib);
+  if (windows) ps(path.join(repo, 'mcp', 'sample', 'make-sample-library.ps1'), '-Out', lib);
+  else fs.cpSync(path.join(repo, 'mcp', 'sample', 'library'), lib, { recursive: true });
   server = await startServer();
   client = await connect(server.url);
 });
@@ -156,8 +159,10 @@ test('add_note writes annotations.json the way the reader does, and PowerShell r
   assert.equal(pn.action, 'page note');
 
   // mnote.ps1 opens every page of the rewritten notebook file and counts annotated pages.
-  const info = ps(path.join(repo, 'mnote.ps1'), 'info', path.join(lib, file));
-  assert.match(info, /11 with highlights or notes/);
+  if (windows) {
+    const info = ps(path.join(repo, 'mnote.ps1'), 'info', path.join(lib, file));
+    assert.match(info, /11 with highlights or notes/);
+  }
 });
 
 test('add_note asks which page when the name is unclear (elicitation)', async () => {
