@@ -156,6 +156,8 @@ Inside, a `.mnotebook` is a ZIP archive:
 
 ## Study with an AI assistant: the MCP server
 
+[![MCP server tests](https://github.com/SwiftkeyC/mnote-reader/actions/workflows/mcp.yml/badge.svg)](https://github.com/SwiftkeyC/mnote-reader/actions/workflows/mcp.yml)
+
 `mcp\` is a [Model Context Protocol](https://modelcontextprotocol.io) server for your Mnote
 library. It runs on your own PC, implements MCP 2025-11-25 over Streamable HTTP, and is built
 with the official MCP TypeScript SDK. Any MCP client can connect to it: Alexa+, Claude, VS Code,
@@ -224,9 +226,9 @@ browser. Say "Quiz me", then answer by touching the card or by saying the answer
 between the two as you like. The window you ran it in shows each tool call. Press Ctrl+C to stop.
 Your answers are remembered the next time you run it; `npm run demo -- --fresh` starts over.
 
-The MCP server and the simulator are plain Node.js, so they should run on macOS and Linux too,
-but they have only been tested on Windows. Exporting from OneNote and Mnote Reader itself need
-Windows.
+The MCP server, the simulator and `npm run demo` run on Windows, macOS and Linux. GitHub Actions
+tests them on all three from a fresh checkout. Exporting from OneNote and Mnote Reader itself
+need Windows.
 
 To use the simulator with a server you started yourself, run `npm run sim` instead and open
 `http://127.0.0.1:47890/`.
@@ -370,8 +372,14 @@ the official MCP client. It also checks the study coach across restarts, session
 the security checks, the OAuth flow, and that the flashcard is listed, linked from the quiz tools,
 and a well-formed page with nothing loaded from outside, and that the simulator builds. Run
 `npm install` first (not `npm ci --omit=dev`), because the simulator's build tool is a
-development package. The tests need Windows, because the sample library is packed by
-`mnote.ps1`.
+development package. On Windows the tests pack a new sample library with `mnote.ps1` and also
+check that `mnote.ps1` reads the notebook files the server rewrites. On macOS and Linux they use
+the copy in `mcp\sample\library`.
+
+`npm run demo:check` starts `npm run demo` on its own copy of the sample notes and uses it like
+the simulator does: it loads the page, reads the flashcard, answers a quiz, and adds a note. On
+every push, GitHub Actions runs `npm ci`, `npm test` and `npm run demo:check` on Linux, macOS
+and Windows.
 
 ## Install and uninstall
 
