@@ -196,6 +196,11 @@ export class StudyCoach {
   quiz(scope = {}, focus = 'due') {
     const cards = this.cards(scope);
     if (!cards.length) {
+      // A page or section without highlights is not the same as no highlights at all.
+      const where = scope.page ? this.lib.resolvePage(scope.page, scope).page?.title : scope.section || scope.notebook;
+      if (where && this.cards({}).length) {
+        return { available: false, speech: `"${where}" has no highlights yet, so there is nothing there to quiz you on. Your other notes have some: say "quiz me" for one of those.` };
+      }
       return {
         available: false,
         speech: 'There are no highlights to quiz you on yet. Highlight key sentences in Mnote Reader, or ask me to add a note on a passage, and I can turn them into questions.',

@@ -76,8 +76,9 @@ footer { padding: 0 18px 18px; color: var(--muted); font-size: 13px; max-width: 
 <footer>
   A simulation for demos, not Amazon's software. <b>Real:</b> the Mnote MCP server and its tools, the
   MCP Apps bridge (AppBridge from @modelcontextprotocol/ext-apps), and the flashcard, run in a sandboxed
-  iframe with its content security policy enforced. <b>Simulated:</b> Alexa's model (a few phrases are
-  matched by rules; anything else is taken as your answer), speech (your browser's speech features),
+  iframe with its content security policy enforced. <b>Simulated:</b> Alexa's model (rules recognise
+  asking for a quiz in your own words, hints, progress and stop; anything else is taken as your
+  answer), speech (your browser's speech features),
   and the device sizes, which follow Amazon's Alexa+ design guide.
 </footer>
 <script type="module" src="sim.js"></script>

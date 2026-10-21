@@ -265,6 +265,7 @@ input:focus-visible, button:focus-visible { outline: 0.19rem solid var(--focus);
     if (pending) {
       parts.push(`${q ? 'The card now shows' : 'The next question on the card is'} question ${pending.questionId}: "${pending.question}".`);
       if (q && state.hint) parts.push('They have seen its hint.');
+      if (pending.hint) parts.push(`Hint (only if they ask): ${pending.hint}.`);
       parts.push(`If they answer it out loud, call answer_quiz with question_id "${pending.questionId}" instead of asking a new question.`);
     }
     bridge.request('ui/update-model-context', { content: [{ type: 'text', text: parts.join(' ') }] }).catch(() => {});

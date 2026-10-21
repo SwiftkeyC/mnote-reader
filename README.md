@@ -242,10 +242,13 @@ What's real and what's simulated:
   Like Alexa+, the host takes the card's `ui/update-model-context` messages, so a spoken answer
   goes to the question on screen. The **What the card told Alexa** and **MCP traffic** panels
   show these messages.
-- **Simulated:** Alexa's language model. A few phrases ("quiz me", "quiz me on economics",
-  "give me a hint", "how am I doing?", "stop") are matched by simple rules, and anything else
-  counts as your answer. Speech uses your browser's speech features: the **Mic** button uses its
-  speech recognition, which may send your voice to the browser maker's speech service. The device
+- **Simulated:** Alexa's language model. Rules (`mcp/sim/intent.js`) recognise asking for a quiz
+  in your own words ("test my knowledge", "help me revise", "quiz me about pricing"), a hint,
+  "repeat the question", "how am I doing?" and "stop". A topic is looked up as a notebook, then a
+  section, then a page, and if it fits several pages you're asked which one. Anything else
+  counts as your answer to the question on screen. Speech uses your browser's speech features:
+  the **Mic** button uses its speech recognition, which may send your voice to the browser
+  maker's speech service. The device
   sizes follow Amazon's Alexa+ design guide: a 768x480 canvas scaled 1.667 times for Echo Show 8
   and 15, plus Echo Show 5, a phone, and the web.
 

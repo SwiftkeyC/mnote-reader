@@ -10,6 +10,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { AppBridge, PostMessageTransport, getToolUiResourceUri } from '@modelcontextprotocol/ext-apps/app-bridge';
+import { intentOf } from './intent.js';
 
 const params = new URLSearchParams(location.search);
 const SERVER = params.get('server') || document.querySelector('meta[name="mnote-mcp-server"]')?.content || 'http://127.0.0.1:47880/mcp';
@@ -33,6 +34,7 @@ const state = {
   cardContext: '',     // what the card on screen last told the model
   voice: params.get('voice') !== 'off',
   busy: false,
+  choosing: null,      // page names, after "which one?"
 };
 window.sim = { state, hear };   // for poking at it from the console
 
@@ -66,30 +68,36 @@ function say(text) {
 
 // ---------------------------------------------------------------- the model (simulated)
 
-const QUIZ = /^(quiz|test|ask) me\b|\bquiz me\b|^(let'?s )?(study|practi[cs]e)\b|^(another|next) (one|question)\b/;
-const HINT = /\b(hint|clue)\b/;
-const PROGRESS = /how am i doing|\bprogress\b|\bmy score\b|\bstreak\b|weak spots?/;
-const STOP = /^(stop|that'?s (all|enough)|i'?m done|exit|cancel)\b/;
-
 const textOf = r => (r?.content || []).find(c => c.type === 'text')?.text || '';
 // A spoken answer goes to the question on screen: the card says which one through the model
 // context; otherwise it is the question the model asked itself.
 const pendingId = () => /question_id "([^"]+)"/.exec(state.cardContext)?.[1] || state.asked?.questionId || null;
+
+// What the card on screen said about its question (see tellModel in the flashcard).
+const cardQuestion = id => new RegExp(`question ${id}: "(.*?)"\\.`).exec(state.cardContext)?.[1] || null;
+const cardHint = () => /Hint \(only if they ask\): (.+?)\.(?:\s|$)/.exec(state.cardContext)?.[1] || null;
+const ORDINAL = { first: 0, '1st': 0, second: 1, '2nd': 1, third: 2, '3rd': 2, last: -1 };
 
 /** One thing the person says to Alexa. */
 async function hear(utterance) {
   const said = String(utterance || '').trim();
   if (!said || state.busy) return;
   turn('you', said);
-  const low = said.toLowerCase().replace(/^alexa,?\s*/, '').replace(/[.!?]+$/, '');
   state.busy = true;
   try {
-    if (QUIZ.test(low)) {
-      const on = /\bon (?:my )?(.+?)(?: notebook)?$/.exec(low)?.[1];
-      await quiz(on ? { notebook: on } : {});
-    } else if (HINT.test(low)) hint();
-    else if (PROGRESS.test(low)) await progress();
-    else if (STOP.test(low)) say('Good work. Your progress is saved, so we can pick up where you left off.');
+    // Requests are told apart from answers first (intent.js): "test my knowledge" mid-quiz asks
+    // for a quiz; it is not a wrong answer.
+    const it = intentOf(said, { pending: !!pendingId() });
+    const choosing = state.choosing;
+    state.choosing = null;
+    if (choosing && it.kind === 'answer') {
+      const n = ORDINAL[/\b(first|second|third|last|1st|2nd|3rd)\b/i.exec(said)?.[1]?.toLowerCase()];
+      await quizOn(n === undefined ? said : choosing.at(n), true);
+    } else if (it.kind === 'quiz') await quizOn(it.topic);
+    else if (it.kind === 'hint') hint();
+    else if (it.kind === 'repeat') repeat();
+    else if (it.kind === 'progress') await progress();
+    else if (it.kind === 'stop') say('Good work. Your progress is saved, so we can pick up where you left off.');
     else if (pendingId()) await answer(said);
     else say('Say "quiz me" to start a quiz from your highlights.');
   } catch (err) {
@@ -105,12 +113,40 @@ async function callTool(name, args) {
 }
 const pick = (o, keys) => Object.fromEntries(keys.filter(k => o && k in o).map(k => [k, o[k]]));
 
-async function quiz(args) {
-  const r = await callTool('quiz_me', args);
-  if (r.isError) return say(textOf(r));
+/**
+ * A quiz on what was asked for, scoped the way an assistant would: a notebook, else a section,
+ * else a page. When the name fits several pages, it asks which one.
+ */
+async function quizOn(topic, pageOnly = false) {
+  if (!topic) return quiz({});
+  for (const key of pageOnly ? ['page'] : ['notebook', 'section', 'page']) {
+    const args = { [key]: topic };
+    const r = await callTool('quiz_me', args);
+    // Found, but nothing highlighted there: an assistant would offer the rest of the notes.
+    const there = r.structuredContent;
+    if (!r.isError && there?.available === false && /has no highlights yet/.test(there.speech || '')) {
+      return quiz({}, `${there.speech.replace(/ Your other notes.*$/, '')} Here's one from all your notes instead. `);
+    }
+    if (!r.isError) return present(args, r);
+    const which = /^Which page\? (.+)$/s.exec(textOf(r));
+    if (which) {
+      state.choosing = [...which[1].matchAll(/"([^"]+)"/g)].map(m => m[1]);
+      const names = state.choosing.map(n => `"${n}"`);
+      return say(`"${topic}" fits ${names.length} pages: ${names.slice(0, -1).join(', ')} and ${names.at(-1)}. Which one?`);
+    }
+  }
+  return quiz({}, `I couldn't find "${topic}" in your notes, so here's a question from all of them. `);
+}
+
+async function quiz(args, lead = '') {
+  return present(args, await callTool('quiz_me', args), lead);
+}
+
+async function present(args, r, lead = '') {
+  if (r.isError) return say(lead + textOf(r));
   const q = r.structuredContent;
   state.asked = q?.available ? q : null;
-  say(q?.speech || textOf(r));
+  say(lead + (q?.speech || textOf(r)));
   await show('quiz_me', args, r);
 }
 
@@ -126,10 +162,19 @@ async function answer(words) {
 
 function hint() {
   const id = pendingId();
-  // The model only knows hints from tool results it saw itself, not from questions the card fetched.
-  if (id && state.asked?.questionId === id && state.asked.hint) say(`Here's a hint: ${state.asked.hint}.`);
+  // The model knows hints from tool results it saw itself, and from what the card told it.
+  const h = id && (state.asked?.questionId === id ? state.asked.hint : cardHint());
+  if (h) say(`Here's a hint: ${h}.`);
   else if (id) say('Tap Hint on the screen for that one.');
   else say('There is no question yet. Say "quiz me" to start.');
+}
+
+function repeat() {
+  const id = pendingId();
+  if (id && state.asked?.questionId === id) return say(state.asked.speech);
+  const q = id && cardQuestion(id);
+  if (q) return say(`The question on the screen is: ${q.replace(/_____/g, 'blank')}. What fills the blank?`);
+  say('There is no question yet. Say "quiz me" to start.');
 }
 
 async function progress() {
